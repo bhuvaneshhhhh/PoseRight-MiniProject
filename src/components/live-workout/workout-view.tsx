@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-import { DrawingUtils, PoseLandmarker } from '@mediapipe/tasks-vision';
+import { DrawingUtils, FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 
 export function WorkoutView() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -18,7 +18,10 @@ export function WorkoutView() {
   useEffect(() => {
     const createPoseLandmarker = async () => {
       try {
-        const landmarker = await PoseLandmarker.createFromOptions('vision', {
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        );
+        const landmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
             delegate: 'GPU',
