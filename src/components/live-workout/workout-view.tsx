@@ -5,12 +5,40 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
+import { DrawingUtils, PoseLandmarker } from '@mediapipe/tasks-vision';
 
 export function WorkoutView() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const [poseLandmarker, setPoseLandmarker] = useState<PoseLandmarker | null>(null);
   const { toast } = useToast();
+  const animationFrameId = useRef<number | null>(null);
 
+  useEffect(() => {
+    const createPoseLandmarker = async () => {
+      try {
+        const landmarker = await PoseLandmarker.createFromOptions('vision', {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numPoses: 1,
+        });
+        setPoseLandmarker(landmarker);
+      } catch (error) {
+        console.error('Error creating PoseLandmarker:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Initialization Error',
+          description: 'Failed to load the pose tracking model. Please refresh the page.',
+        });
+      }
+    };
+    createPoseLandmarker();
+  }, [toast]);
+  
   useEffect(() => {
     const getCameraPermission = async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -45,20 +73,68 @@ export function WorkoutView() {
 
     getCameraPermission();
     
-    // Cleanup function to stop video stream when component unmounts
     return () => {
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
         }
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+        }
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (hasCameraPermission && poseLandmarker && videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const canvasCtx = canvas.getContext('2d');
+        const drawingUtils = canvasCtx ? new DrawingUtils(canvasCtx) : null;
+        
+        let lastVideoTime = -1;
+
+        const predictWebcam = () => {
+            if (video.currentTime !== lastVideoTime && canvasCtx && drawingUtils) {
+                lastVideoTime = video.currentTime;
+                const results = poseLandmarker.detectForVideo(video, Date.now());
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (results.landmarks && results.landmarks.length > 0) {
+                    results.landmarks.forEach(landmark => {
+                        drawingUtils.drawLandmarks(landmark, {
+                            radius: (data) => DrawingUtils.lerp(data.from!.z, -0.15, 0.1, 5, 1),
+                            color: '#000000',
+                        });
+                        drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { color: '#000000', lineWidth: 4 });
+                    });
+                }
+                canvasCtx.restore();
+            }
+            animationFrameId.current = requestAnimationFrame(predictWebcam);
+        };
+        
+        video.addEventListener('loadeddata', predictWebcam);
+        
+        return () => {
+            video.removeEventListener('loadeddata', predictWebcam);
+            if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+            }
+        }
+    }
+  }, [hasCameraPermission, poseLandmarker]);
 
   return (
     <Card>
       <CardContent className="p-4">
         <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden">
             <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
             
             {!hasCameraPermission && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center text-primary-foreground">
@@ -86,11 +162,4 @@ export function WorkoutView() {
                     <AlertTitle>Camera Access Required</AlertTitle>
                     <AlertDescription>
                         Please allow camera access to use this feature. You may need to refresh the page after granting permission.
-                    </AlertDescription>
-                </Alert>
-            )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+                    </Aler
