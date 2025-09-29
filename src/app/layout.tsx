@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'TempoAI',
+  title: 'PoseRight-AI',
   description: 'Your AI-powered fitness companion',
 };
 

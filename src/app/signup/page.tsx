@@ -11,7 +11,7 @@ export default function SignupPage() {
         <div className="mb-8 flex flex-col items-center gap-4 text-center">
           <Logo className="h-12 w-auto text-primary" />
           <h1 className="font-headline text-3xl font-bold text-foreground">
-            Create your TempoAI Account
+            Create your PoseRight-AI Account
           </h1>
           <p className="text-muted-foreground">
             Start your personalized fitness journey today.

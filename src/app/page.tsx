@@ -11,7 +11,7 @@ export default function LoginPage() {
         <div className="mb-8 flex flex-col items-center gap-4 text-center">
           <Logo className="h-12 w-auto text-primary" />
           <h1 className="font-headline text-3xl font-bold text-foreground">
-            Welcome back to TempoAI
+            Welcome back to PoseRight-AI
           </h1>
           <p className="text-muted-foreground">
             Your personal AI fitness companion.

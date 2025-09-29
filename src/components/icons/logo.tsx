@@ -4,13 +4,13 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 40"
-      width="200"
+      viewBox="0 0 240 40"
+      width="240"
       height="40"
       aria-labelledby="logo-title"
       {...props}
     >
-      <title id="logo-title">TempoAI Logo</title>
+      <title id="logo-title">PoseRight-AI Logo</title>
       <text
         x="0"
         y="30"
@@ -19,8 +19,8 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
         fontWeight="bold"
         fill="currentColor"
       >
-        Tempo
-        <tspan fill="hsl(var(--primary))">AI</tspan>
+        PoseRight
+        <tspan fill="hsl(var(--primary))">-AI</tspan>
       </text>
     </svg>
   );
