@@ -60,11 +60,7 @@ export function AppSidebar() {
         <Link href="/dashboard" className="flex items-center gap-2">
           <Logo className="h-7 w-auto text-primary" />
         </Link>
-        <SidebarTrigger asChild>
-          <button className="h-7 w-7 md:hidden">
-            <PanelLeft />
-          </button>
-        </SidebarTrigger>
+        <SidebarTrigger className="h-7 w-7 md:hidden" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
