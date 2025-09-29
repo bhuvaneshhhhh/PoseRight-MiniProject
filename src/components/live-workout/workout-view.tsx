@@ -162,4 +162,11 @@ export function WorkoutView() {
                     <AlertTitle>Camera Access Required</AlertTitle>
                     <AlertDescription>
                         Please allow camera access to use this feature. You may need to refresh the page after granting permission.
-                    </Aler
+                    </AlertDescription>
+                </Alert>
+            )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
