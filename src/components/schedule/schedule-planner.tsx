@@ -46,7 +46,7 @@ export function SchedulePlanner() {
   const [newWorkoutType, setNewWorkoutType] = useState<'Cardio' | 'Strength' | 'Flexibility' | 'Rest Day'>('Strength');
 
   const handleAddWorkout = () => {
-    if (!newWorkoutName.trim()) return;
+    if (!newWorkoutName.trim() || !currentDay) return;
     
     setSchedule(schedule.map(daySchedule => {
         if (daySchedule.day === currentDay) {
@@ -72,68 +72,73 @@ export function SchedulePlanner() {
         return daySchedule;
     }))
   }
+  
+  const openDialog = (day: string) => {
+    setCurrentDay(day);
+    setIsDialogOpen(true);
+  }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {schedule.map(({ day, workouts }) => (
-        <Card key={day} className="flex flex-col">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="font-headline text-xl">{day}</CardTitle>
-             <Dialog open={isDialogOpen && currentDay === day} onOpenChange={(isOpen) => { if (!isOpen) setCurrentDay(''); setIsDialogOpen(isOpen); }}>
-                <DialogTrigger asChild>
-                    <Button size="icon" variant="ghost" onClick={() => { setCurrentDay(day); setIsDialogOpen(true); }}>
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                </DialogTrigger>
-             </Dialog>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-2">
-            {workouts.length > 0 ? workouts.map(workout => (
-              <div key={workout.id} className="group flex items-center justify-between rounded-md bg-muted p-2">
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{workout.name}</span>
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {schedule.map(({ day, workouts }) => (
+          <Card key={day} className="flex flex-col">
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle className="font-headline text-xl">{day}</CardTitle>
+              <Button size="icon" variant="ghost" onClick={() => openDialog(day)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-2">
+              {workouts.length > 0 ? workouts.map(workout => (
+                <div key={workout.id} className="group flex items-center justify-between rounded-md bg-muted p-2">
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{workout.name}</span>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveWorkout(day, workout.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
-                <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveWorkout(day, workout.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            )) : <p className="text-sm text-muted-foreground text-center pt-4">No workouts planned.</p>}
-          </CardContent>
-        </Card>
-      ))}
+              )) : <p className="text-sm text-muted-foreground text-center pt-4">No workouts planned.</p>}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        <DialogContent>
-            <DialogHeader>
-            <DialogTitle>Add workout to {currentDay}</DialogTitle>
-            <DialogDescription>
-                Plan a new activity for your schedule.
-            </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="workout-name" className="text-right">Name</Label>
-                    <Input id="workout-name" value={newWorkoutName} onChange={(e) => setNewWorkoutName(e.target.value)} className="col-span-3" placeholder="e.g. Morning Jog" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="workout-type" className="text-right">Type</Label>
-                    <Select onValueChange={(value: any) => setNewWorkoutType(value)} defaultValue={newWorkoutType}>
-                        <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Strength">Strength</SelectItem>
-                            <SelectItem value="Cardio">Cardio</SelectItem>
-                            <SelectItem value="Flexibility">Flexibility</SelectItem>
-                            <SelectItem value="Rest Day">Rest Day</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button onClick={handleAddWorkout}>Add Workout</Button>
-            </DialogFooter>
-        </DialogContent>
-    </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+              <DialogTitle>Add workout to {currentDay}</DialogTitle>
+              <DialogDescription>
+                  Plan a new activity for your schedule.
+              </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="workout-name" className="text-right">Name</Label>
+                      <Input id="workout-name" value={newWorkoutName} onChange={(e) => setNewWorkoutName(e.target.value)} className="col-span-3" placeholder="e.g. Morning Jog" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="workout-type" className="text-right">Type</Label>
+                      <Select onValueChange={(value: any) => setNewWorkoutType(value)} defaultValue={newWorkoutType}>
+                          <SelectTrigger className="col-span-3">
+                              <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="Strength">Strength</SelectItem>
+                              <SelectItem value="Cardio">Cardio</SelectItem>
+                              <SelectItem value="Flexibility">Flexibility</SelectItem>
+                              <SelectItem value="Rest Day">Rest Day</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button onClick={handleAddWorkout}>Add Workout</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }
