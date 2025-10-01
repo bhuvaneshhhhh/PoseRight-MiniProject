@@ -115,8 +115,15 @@ export function WorkoutView() {
 
                 if (results.landmarks && results.landmarks.length > 0) {
                     const landmarks = results.landmarks[0];
-                    drawingUtils.drawLandmarks(landmarks);
-                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS);
+                     drawingUtils.drawLandmarks(landmarks, {
+                        radius: (data) => DrawingUtils.lerp(data.from!.z, -0.15, 0.1, 5, 1),
+                        color: 'black',
+                        fillColor: 'black',
+                    });
+                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                        color: 'black',
+                        lineWidth: 8
+                    });
                 }
                 canvasCtx.restore();
             }
