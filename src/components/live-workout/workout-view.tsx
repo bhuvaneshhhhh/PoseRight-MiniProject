@@ -186,10 +186,10 @@ export function WorkoutView() {
                 if (results.landmarks && results.landmarks.length > 0) {
                     const landmarks = results.landmarks[0];
                     drawingUtils.drawLandmarks(landmarks, {
-                        radius: (data) => DrawingUtils.lerp(data.from!.z, -0.15, 0.1, 8, 2),
-                        color: '#FFFFFF',
+                        radius: 8,
+                        color: '#000000',
                     });
-                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#FFFFFF', lineWidth: 8 });
+                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#000000', lineWidth: 12 });
                     analyzeSquatForm(landmarks);
                 } else {
                   setFormScore(0);
