@@ -99,7 +99,8 @@ export function WorkoutView() {
         const predictWebcam = () => {
             if (video.currentTime !== lastVideoTime && canvasCtx && drawingUtils) {
                 lastVideoTime = video.currentTime;
-                const results = poseLandmarker.detectForVideo(video, Date.now());
+                const startTimeMs = performance.now();
+                const results = poseLandmarker.detectForVideo(video, startTimeMs);
 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
