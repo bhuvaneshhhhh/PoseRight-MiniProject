@@ -20,76 +20,6 @@ export function WorkoutView() {
   const [formScore, setFormScore] = useState(0);
   const [aiFeedback, setAiFeedback] = useState('Waiting to start...');
 
-  // Helper to calculate angle between three landmarks
-  const calculateAngle = (a: Landmark, b: Landmark, c: Landmark) => {
-    if (!a || !b || !c) return 0;
-    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let angle = Math.abs(radians * 180.0 / Math.PI);
-    if (angle > 180.0) {
-      angle = 360 - angle;
-    }
-    return angle;
-  };
-
-  const analyzeSquatForm = (landmarks: Landmark[]) => {
-    const keypoints: {[key:string]: Landmark} = {};
-    const landmarkNames = [
-        "nose", "left_eye_inner", "left_eye", "left_eye_outer", "right_eye_inner", "right_eye", "right_eye_outer", 
-        "left_ear", "right_ear", "mouth_left", "mouth_right", "left_shoulder", "right_shoulder", "left_elbow", 
-        "right_elbow", "left_wrist", "right_wrist", "left_pinky", "right_pinky", "left_index", "right_index", 
-        "left_thumb", "right_thumb", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle", 
-        "left_heel", "right_heel", "left_foot_index", "right_foot_index"
-    ];
-    landmarks.forEach((landmark, i) => {
-      if (landmarkNames[i]) {
-        keypoints[landmarkNames[i]] = landmark;
-      }
-    });
-
-    const requiredKeypoints = ['left_hip', 'left_knee', 'left_ankle', 'right_hip', 'right_knee', 'right_ankle', 'left_shoulder', 'right_shoulder'];
-    const hasAllKeypoints = requiredKeypoints.every(name => keypoints[name] && keypoints[name].visibility && keypoints[name].visibility! > 0.5);
-
-    if (!hasAllKeypoints) {
-      setFormScore(0);
-      setAiFeedback("Not all joints are visible. Please face the camera.");
-      return;
-    }
-
-    const leftKneeAngle = calculateAngle(keypoints.left_hip, keypoints.left_knee, keypoints.left_ankle);
-    const rightKneeAngle = calculateAngle(keypoints.right_hip, keypoints.right_knee, keypoints.right_ankle);
-    const leftHipAngle = calculateAngle(keypoints.left_shoulder, keypoints.left_hip, keypoints.left_knee);
-    const rightHipAngle = calculateAngle(keypoints.right_shoulder, keypoints.right_hip, keypoints.right_knee);
-
-    let feedback = [];
-    let score = 100;
-    
-    // 1. Squat Depth
-    if (leftHipAngle > 100 || rightHipAngle > 100) {
-      feedback.push("Go lower!");
-      score -= 30;
-    } else if (leftHipAngle < 70 || rightHipAngle < 70) {
-      feedback.push("Good depth!");
-    }
-
-    // 2. Knee position (preventing valgus collapse)
-    const kneeDistance = Math.abs(keypoints.left_knee.x - keypoints.right_knee.x);
-    const ankleDistance = Math.abs(keypoints.left_ankle.x - keypoints.right_ankle.x);
-    if (kneeDistance < ankleDistance * 0.9) {
-      feedback.push("Keep your knees out.");
-      score -= 30;
-    }
-
-    // 3. Back straightness
-    const backAngle = calculateAngle(keypoints.right_shoulder, keypoints.right_hip, {x: keypoints.right_hip.x, y: keypoints.right_hip.y - 1, z:0, visibility:1});
-    if (backAngle < 60) {
-        feedback.push("Keep your chest up.");
-        score -= 20;
-    }
-
-    setFormScore(Math.max(0, score));
-    setAiFeedback(feedback.length > 0 ? feedback.join(' ') : 'Great form!');
-  };
-
   useEffect(() => {
     const createPoseLandmarker = async () => {
       try {
@@ -185,15 +115,8 @@ export function WorkoutView() {
 
                 if (results.landmarks && results.landmarks.length > 0) {
                     const landmarks = results.landmarks[0];
-                    drawingUtils.drawLandmarks(landmarks, {
-                        radius: 8,
-                        color: '#000000',
-                    });
-                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#000000', lineWidth: 12 });
-                    analyzeSquatForm(landmarks);
-                } else {
-                  setFormScore(0);
-                  setAiFeedback("No pose detected. Make sure you are in frame.");
+                    drawingUtils.drawLandmarks(landmarks);
+                    drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS);
                 }
                 canvasCtx.restore();
             }
