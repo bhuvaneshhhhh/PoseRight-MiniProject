@@ -42,7 +42,8 @@ export function WorkoutView() {
   const MAX_ANGLE = 160;
 
   const handleNewFeedback = useCallback(async (newFeedback: string) => {
-    if (newFeedback === feedbackText) return; // Avoid re-processing the same feedback
+    // Only generate new audio if there's no audio currently loading and the message is new
+    if (isAudioLoading || newFeedback === feedbackText) return;
 
     setFeedbackText(newFeedback);
     setIsAudioLoading(true);
@@ -57,7 +58,7 @@ export function WorkoutView() {
     } finally {
       setIsAudioLoading(false);
     }
-  }, [feedbackText]);
+  }, [isAudioLoading, feedbackText]);
 
   const onResults = (results: PoseLandmarkerResult) => {
     const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
@@ -104,6 +105,7 @@ export function WorkoutView() {
           rightWrist
         );
 
+        // State machine for rep counting
         if (elbowAngle > MAX_ANGLE) {
           if (stage !== 'DOWN') {
             setStage('DOWN');
@@ -118,6 +120,7 @@ export function WorkoutView() {
         }
 
       } catch (e) {
+        // This catch block is for when landmarks are not visible
         handleNewFeedback('Please make sure your full arm is in view.');
       }
     } else {
