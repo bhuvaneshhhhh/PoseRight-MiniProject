@@ -196,16 +196,16 @@ export function WorkoutView() {
         </p>
       </header>
       <div className="flex-1 relative bg-black flex items-center justify-center">
-        <div className="relative w-full h-full aspect-[2/3] max-h-full max-w-full">
+        <div className="relative w-full h-full">
             <Webcam
               ref={webcamRef}
               mirrored={true}
-              className="absolute w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
             />
             <canvas
               ref={canvasRef}
-              className="absolute w-full h-full object-contain"
+              className="absolute inset-0 w-full h-full object-contain"
               style={{ transform: 'scaleX(-1)' }}
             />
         </div>
