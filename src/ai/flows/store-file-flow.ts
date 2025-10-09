@@ -10,11 +10,16 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { initializeFirebase } from '@/firebase';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
 
-// Initialize Firebase Admin for server-side operations
-const { firebaseApp } = initializeFirebase();
-const storage = getStorage(firebaseApp);
+// Helper function to initialize Firebase on the server-side if not already done.
+function getFirebaseApp(): FirebaseApp {
+  if (getApps().length > 0) {
+    return getApps()[0];
+  }
+  return initializeApp(firebaseConfig);
+}
 
 const StoreFileInputSchema = z.object({
   filePath: z.string().describe('The full path where the file should be stored in Firebase Storage, including the file name and extension.'),
@@ -35,6 +40,8 @@ const storeFileFlow = ai.defineFlow(
     outputSchema: StoreFileOutputSchema,
   },
   async ({ filePath, dataUrl }) => {
+    const firebaseApp = getFirebaseApp();
+    const storage = getStorage(firebaseApp);
     const storageRef = ref(storage, filePath);
     
     // Upload the file from the data URL
