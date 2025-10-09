@@ -34,9 +34,7 @@ export function WorkoutView() {
   const requestRef = useRef<number>();
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const scoreIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [formScore, setFormScore] = useState(100);
   const [feedbackText, setFeedbackText] = useState('Begin Bicep Curls');
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   
@@ -79,14 +77,12 @@ export function WorkoutView() {
         }
       };
       
-      if (issues.length > 0) {
-        setFormScore(score => Math.max(0, score - 20));
-      }
-
       if (forceImmediate) {
         generateAndPlayFeedback();
       } else if (issues.length > 0) {
         feedbackTimeoutRef.current = setTimeout(generateAndPlayFeedback, 1500);
+      } else {
+         feedbackTimeoutRef.current = setTimeout(generateAndPlayFeedback, 1500);
       }
     },
     [isAudioLoading, feedbackText]
@@ -136,48 +132,31 @@ export function WorkoutView() {
         );
         
         let currentIssues: string[] = [];
-
-        // Simple logic for bicep curl form
-        if (elbowAngle > MAX_ANGLE) {
-          // User is in the 'down' stage. No issues here usually unless they overextend.
-        } else if (elbowAngle < MIN_ANGLE) {
-          // User is in the 'up' stage.
-        } else if (elbowAngle > MIN_ANGLE && elbowAngle < MAX_ANGLE) {
-          // User is mid-rep. Check for common mistakes.
-          if (elbowAngle < 140 && elbowAngle > 90) { // In the returning phase
-             // This logic is tricky. Let's simplify.
-          }
-        }
         
         const hipVisible = landmarks[24].visibility > 0.5;
         const shoulderVisible = landmarks[12].visibility > 0.5;
+        const elbowVisible = landmarks[14].visibility > 0.5;
 
-        if (hipVisible && shoulderVisible) {
-          if(landmarks[24].y < landmarks[12].y) {
-             currentIssues.push("Keep your shoulders back and chest up.");
+        if (hipVisible && shoulderVisible && elbowVisible) {
+          // Check for shoulder moving forward (a common mistake)
+          if(landmarks[12].x < landmarks[14].x) {
+             currentIssues.push("Try not to swing your arm; keep your elbow locked at your side.");
           }
+        } else {
+            currentIssues.push("Make sure your full arm is visible to the camera.");
         }
         
         if (currentIssues.length > 0) {
             handleNewFeedback(currentIssues);
-            if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
-            scoreIntervalRef.current = null;
         } else {
-            handleNewFeedback([]);
-            if (!scoreIntervalRef.current) {
-                scoreIntervalRef.current = setInterval(() => {
-                    setFormScore(score => Math.min(100, score + 5));
-                }, 500);
-            }
+            handleNewFeedback([]); // No issues, will generate positive feedback
         }
 
       } catch (e) {
         handleNewFeedback(['Arm not visible'], true);
-        if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
       }
     } else {
       setFeedbackText('No person detected.');
-       if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
     }
     canvasCtx.restore();
   };
@@ -242,9 +221,6 @@ export function WorkoutView() {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
       }
-      if (scoreIntervalRef.current) {
-        clearInterval(scoreIntervalRef.current);
-      }
       poseLandmarkerRef.current?.close();
     };
   }, [predict]);
@@ -279,14 +255,6 @@ export function WorkoutView() {
          <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
-          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/3 text-center">
-            <p className="font-bold text-primary text-sm uppercase tracking-wider">
-              Form Score
-            </p>
-            <p className="text-5xl font-bold text-white tabular-nums">
-              {Math.round(formScore)}
-            </p>
-          </div>
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-[200px]">
               {isAudioLoading ? (
                 <Volume2 className="w-8 h-8 text-primary animate-pulse" />
