@@ -37,9 +37,6 @@ export function WorkoutView() {
 
   const [feedbackText, setFeedbackText] = useState('Begin Bicep Curls');
   const [isAudioLoading, setIsAudioLoading] = useState(false);
-  
-  const MIN_ANGLE = 45;
-  const MAX_ANGLE = 160;
 
   const handleNewFeedback = useCallback(
     (issues: string[] = [], forceImmediate = false) => {
@@ -205,8 +202,8 @@ export function WorkoutView() {
         },
         runningMode: 'VIDEO',
         numPoses: 1,
-        minPoseDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minPoseDetectionConfidence: 0.3,
+        minTrackingConfidence: 0.3,
         outputSegmentationMasks: false,
       });
       poseLandmarkerRef.current = landmarker;
