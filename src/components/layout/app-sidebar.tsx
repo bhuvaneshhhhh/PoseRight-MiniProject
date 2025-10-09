@@ -3,8 +3,9 @@
 import {
   Bot,
   CalendarDays,
+  ClipboardList,
   LayoutDashboard,
-  PanelLeft,
+  Salad,
   User,
   Video,
 } from 'lucide-react';
@@ -32,6 +33,16 @@ const menuItems = [
     href: '/live-workout',
     label: 'Live Workout',
     icon: Video,
+  },
+  {
+    href: '/my-routine',
+    label: 'My Routine',
+    icon: ClipboardList,
+  },
+  {
+    href: '/my-diet',
+    label: 'My Diet',
+    icon: Salad,
   },
   {
     href: '/ai-coach',
