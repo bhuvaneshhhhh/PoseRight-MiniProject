@@ -45,19 +45,19 @@ export function WorkoutView() {
 
   const handleNewFeedback = useCallback(
     async (issues: string[] = [], forceImmediate = false) => {
-      if (isAudioLoading) return;
+      if (isAudioLoading && !forceImmediate) return;
 
-      const newFeedback = await generateFeedbackForPose({
+      const { feedback: newFeedback } = await generateFeedbackForPose({
         exerciseName: 'Bicep Curl',
         issues: issues,
       });
+      
+      if (newFeedback === feedbackText && !forceImmediate) return;
 
-      if (newFeedback.feedback === feedbackText && !forceImmediate) return;
-
-      setFeedbackText(newFeedback.feedback);
+      setFeedbackText(newFeedback);
       setIsAudioLoading(true);
       try {
-        const { audio } = await generateAudioFeedback({ text: newFeedback.feedback });
+        const { audio } = await generateAudioFeedback({ text: newFeedback });
         if (audioRef.current) {
           audioRef.current.src = audio;
           audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
@@ -65,7 +65,8 @@ export function WorkoutView() {
       } catch (error) {
         console.error('Failed to generate audio feedback:', error);
       } finally {
-        setIsAudioLoading(false);
+        // A short delay before we allow new audio to be fetched
+        setTimeout(() => setIsAudioLoading(false), 1000);
       }
     },
     [isAudioLoading, feedbackText]
@@ -118,16 +119,13 @@ export function WorkoutView() {
 
         // State machine for rep counting
         if (elbowAngle > MAX_ANGLE) {
-          if (stage !== 'DOWN') {
             setStage('DOWN');
-            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-            feedbackTimeoutRef.current = setTimeout(() => handleNewFeedback(['Not extending arm fully']), 500);
-          }
         } else if (elbowAngle < MIN_ANGLE) {
           if (stage === 'DOWN') {
             setRepCount((prev) => prev + 1);
             setStage('UP');
             if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+            // Give positive feedback on a successful rep
             feedbackTimeoutRef.current = setTimeout(() => handleNewFeedback([], true), 200);
           }
         }
