@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LoginForm } from '@/components/auth/login-form';
+import LoginPageClient from '@/components/auth/login-page-client';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ export default function LoginPage() {
             <CardDescription>Enter your credentials to access your account.</CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            <LoginPageClient />
           </CardContent>
           <CardFooter className="flex flex-col items-center gap-4">
             <p className="text-sm text-muted-foreground">
