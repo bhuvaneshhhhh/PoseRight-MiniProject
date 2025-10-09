@@ -80,12 +80,12 @@ export function WorkoutView() {
       // Draw skeleton
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
         color: '#000000', // black
-        lineWidth: 4,
+        lineWidth: 8,
       });
       drawingUtils.drawLandmarks(landmarks, {
         color: '#808080', // grey
-        lineWidth: 2,
-        radius: 4,
+        lineWidth: 4,
+        radius: 6,
       });
 
       // --- Rule-based Logic for Bicep Curl ---
@@ -153,7 +153,7 @@ export function WorkoutView() {
     }
 
     requestRef.current = requestAnimationFrame(predict);
-  }, [handleNewFeedback]);
+  }, []);
 
   useEffect(() => {
     const initializePoseLandmarker = async () => {
@@ -170,6 +170,8 @@ export function WorkoutView() {
         },
         runningMode: 'VIDEO',
         numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
         outputSegmentationMasks: false,
       });
       poseLandmarkerRef.current = landmarker;
@@ -193,18 +195,20 @@ export function WorkoutView() {
           Real-time bicep curl detection and form analysis.
         </p>
       </header>
-      <div className="flex-1 relative bg-black">
-        <Webcam
-          ref={webcamRef}
-          mirrored={true}
-          className="absolute w-full h-full object-contain"
-          videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute w-full h-full object-contain"
-          style={{ transform: 'scaleX(-1)' }}
-        />
+      <div className="flex-1 relative bg-black flex items-center justify-center">
+        <div className="relative w-full h-full aspect-[2/3] max-h-full max-w-full">
+            <Webcam
+              ref={webcamRef}
+              mirrored={true}
+              className="absolute w-full h-full object-cover"
+              videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute w-full h-full object-contain"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+        </div>
          <audio ref={audioRef} className="hidden" />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
