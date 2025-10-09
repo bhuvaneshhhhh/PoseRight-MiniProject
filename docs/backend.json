@@ -4,12 +4,8 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile information within the TempoAI application.",
+      "description": "Represents a user's profile information within the PoseRight-AI application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user profile."
-        },
         "name": {
           "type": "string",
           "description": "The user's full name."
@@ -25,11 +21,10 @@
         },
         "profilePicture": {
           "type": "string",
-          "description": "URL or path to the user's profile picture."
+          "description": "URL to the user's profile picture, hosted in Firebase Storage."
         }
       },
       "required": [
-        "id",
         "name",
         "email"
       ]
@@ -277,13 +272,13 @@
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}/profile",
+        "path": "/users/{userId}/profile/data",
         "definition": {
           "entityName": "UserProfile",
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profile information. This path enforces ownership by userId. The document ID will be 'profile' to ensure there's only one profile per user.",
+          "description": "Stores a single user profile document. The document ID is 'data' to enforce a 1:1 user-to-profile relationship.",
           "params": [
             {
               "name": "userId",

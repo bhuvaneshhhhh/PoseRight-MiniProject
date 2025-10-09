@@ -3,16 +3,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { User } from 'lucide-react';
+import { User, Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Card, CardContent } from '../ui/card';
+import { useFirebase, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
@@ -20,21 +22,53 @@ const formSchema = z.object({
   bio: z.string().max(160, 'Bio is too long').optional(),
 });
 
+type UserProfile = z.infer<typeof formSchema>;
+
 export function ProfileForm() {
   const { toast } = useToast();
   const avatarPlaceholder = PlaceHolderImages.find(p => p.id === 'user-avatar');
+  const { firestore, user } = useFirebase();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const userDocRef = useMemoFirebase(
+    () => (firestore && user ? doc(firestore, 'users', user.uid, 'profile', 'data') : null),
+    [firestore, user]
+  );
+  
+  const { data: userProfile, isLoading } = useDoc<UserProfile>(userDocRef);
+
+  const form = useForm<UserProfile>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: 'Alex Doe',
-      email: 'alex.doe@example.com',
-      bio: 'Fitness enthusiast on a journey to a healthier lifestyle. Lover of HIIT and yoga.',
+      name: '',
+      email: '',
+      bio: '',
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  useEffect(() => {
+    if (userProfile) {
+      form.reset(userProfile);
+    } else if (user) {
+      form.reset({
+        name: user.displayName || '',
+        email: user.email || '',
+        bio: '',
+      })
+    }
+  }, [userProfile, user, form]);
+
+  function onSubmit(values: UserProfile) {
+    if (!userDocRef) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Not authenticated. Please log in.',
+        });
+        return;
+    }
+    
+    setDocumentNonBlocking(userDocRef, values, { merge: true });
+
     toast({
       title: 'Profile Updated',
       description: 'Your changes have been saved successfully.',
@@ -44,19 +78,25 @@ export function ProfileForm() {
   return (
     <Card>
       <CardContent className="p-6">
+        {isLoading && (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        )}
+        {!isLoading && (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                {avatarPlaceholder && <AvatarImage src={avatarPlaceholder.imageUrl} alt="User avatar" />}
+                {userProfile?.profilePicture ? <AvatarImage src={userProfile.profilePicture} alt="User avatar" /> : avatarPlaceholder && <AvatarImage src={avatarPlaceholder.imageUrl} alt="User avatar" />}
                 <AvatarFallback>
                   <User className="h-10 w-10" />
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                  <h2 className="text-xl font-bold">Profile Picture</h2>
-                 <p className="text-sm text-muted-foreground">You can change your avatar in your account settings.</p>
-                 <Button variant="outline" size="sm" className="mt-2" onClick={(e) => e.preventDefault()}>Change Picture</Button>
+                 <p className="text-sm text-muted-foreground">This feature is coming soon!</p>
+                 <Button variant="outline" size="sm" className="mt-2" onClick={(e) => e.preventDefault()} disabled>Change Picture</Button>
               </div>
             </div>
             
@@ -80,7 +120,7 @@ export function ProfileForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@example.com" {...field} />
+                    <Input type="email" placeholder="you@example.com" {...field} readOnly />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -100,10 +140,14 @@ export function ProfileForm() {
               )}
             />
             <div className="flex justify-end">
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
             </div>
           </form>
         </Form>
+        )}
       </CardContent>
     </Card>
   );
