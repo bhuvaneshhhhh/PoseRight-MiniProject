@@ -160,7 +160,7 @@ export function WorkoutView() {
     const predict = async () => {
       if (video.currentTime !== lastVideoTime) {
         const startTimeMs = performance.now();
-        const results = await poseLandmarker.detectForVideo(
+        const results = poseLandmarker.detectForVideo(
           video,
           startTimeMs
         );
@@ -175,11 +175,11 @@ export function WorkoutView() {
           analyzePose(landmarks);
           utils.drawLandmarks(landmarks, {
             radius: 8,
-            color: 'black',
-            fillColor: 'black',
+            color: 'white',
+            fillColor: 'white',
           });
           utils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-            color: 'black',
+            color: 'white',
             lineWidth: 8,
           });
 
