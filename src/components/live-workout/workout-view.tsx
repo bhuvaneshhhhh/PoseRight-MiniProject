@@ -34,24 +34,22 @@ export function WorkoutView() {
   const requestRef = useRef<number>();
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scoreIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [repCount, setRepCount] = useState(0);
-  const [stage, setStage] = useState('DOWN');
+  const [formScore, setFormScore] = useState(100);
   const [feedbackText, setFeedbackText] = useState('Begin Bicep Curls');
   const [isAudioLoading, setIsAudioLoading] = useState(false);
-
+  
   const MIN_ANGLE = 45;
   const MAX_ANGLE = 160;
 
   const handleNewFeedback = useCallback(
     (issues: string[] = [], forceImmediate = false) => {
-      // Always clear any pending feedback to prevent backlogs.
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
       }
 
       const generateAndPlayFeedback = async () => {
-        // Double-check loading state before proceeding.
         if (isAudioLoading) return;
 
         const { feedback: newFeedback } = await generateFeedbackForPose({
@@ -59,7 +57,6 @@ export function WorkoutView() {
           issues: issues,
         });
 
-        // If the feedback is the same as what's currently shown, don't re-generate audio.
         if (newFeedback === feedbackText && !forceImmediate) return;
 
         setFeedbackText(newFeedback);
@@ -71,7 +68,6 @@ export function WorkoutView() {
             audioRef.current.src = audio;
             audioRef.current.play().catch(e => {
               console.error("Audio playback failed:", e);
-              // If playback fails, immediately allow new feedback.
               setIsAudioLoading(false);
             });
           } else {
@@ -82,15 +78,18 @@ export function WorkoutView() {
           setIsAudioLoading(false);
         }
       };
+      
+      if (issues.length > 0) {
+        setFormScore(score => Math.max(0, score - 20));
+      }
 
       if (forceImmediate) {
         generateAndPlayFeedback();
-      } else {
-        // Debounce corrective feedback to avoid spamming the API.
+      } else if (issues.length > 0) {
         feedbackTimeoutRef.current = setTimeout(generateAndPlayFeedback, 1500);
       }
     },
-    [isAudioLoading, feedbackText] // Dependencies are correct
+    [isAudioLoading, feedbackText]
   );
 
   const onResults = (results: PoseLandmarkerResult) => {
@@ -137,36 +136,48 @@ export function WorkoutView() {
         );
         
         let currentIssues: string[] = [];
+
+        // Simple logic for bicep curl form
         if (elbowAngle > MAX_ANGLE) {
-            if (stage !== 'DOWN') {
-                setStage('DOWN');
-            }
+          // User is in the 'down' stage. No issues here usually unless they overextend.
         } else if (elbowAngle < MIN_ANGLE) {
-          if (stage === 'DOWN') {
-            setRepCount((prev) => prev + 1);
-            setStage('UP');
-            // Give positive feedback on a successful rep immediately
-            handleNewFeedback([], true);
+          // User is in the 'up' stage.
+        } else if (elbowAngle > MIN_ANGLE && elbowAngle < MAX_ANGLE) {
+          // User is mid-rep. Check for common mistakes.
+          if (elbowAngle < 140 && elbowAngle > 90) { // In the returning phase
+             // This logic is tricky. Let's simplify.
           }
-        } else if (stage === 'DOWN' && elbowAngle < 140) {
-            // User is in the middle of a curl but hasn't gone all the way down
-            currentIssues.push("Fully extend your arm at the bottom.");
+        }
+        
+        const hipVisible = landmarks[24].visibility > 0.5;
+        const shoulderVisible = landmarks[12].visibility > 0.5;
+
+        if (hipVisible && shoulderVisible) {
+          if(landmarks[24].y < landmarks[12].y) {
+             currentIssues.push("Keep your shoulders back and chest up.");
+          }
         }
         
         if (currentIssues.length > 0) {
             handleNewFeedback(currentIssues);
+            if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
+            scoreIntervalRef.current = null;
         } else {
-            // If there are no issues, clear any pending corrective feedback
-            if (feedbackTimeoutRef.current) {
-                clearTimeout(feedbackTimeoutRef.current);
+            handleNewFeedback([]);
+            if (!scoreIntervalRef.current) {
+                scoreIntervalRef.current = setInterval(() => {
+                    setFormScore(score => Math.min(100, score + 5));
+                }, 500);
             }
         }
 
       } catch (e) {
         handleNewFeedback(['Arm not visible'], true);
+        if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
       }
     } else {
       setFeedbackText('No person detected.');
+       if (scoreIntervalRef.current) clearInterval(scoreIntervalRef.current);
     }
     canvasCtx.restore();
   };
@@ -190,11 +201,11 @@ export function WorkoutView() {
     if (video.currentTime !== lastVideoTimeRef.current) {
       lastVideoTimeRef.current = video.currentTime;
       const startTimeMs = performance.now();
-      const results = poseLandmarkerRef.current.detectForVideo(
+      poseLandmarkerRef.current.detectForVideo(
         video,
-        startTimeMs
+        startTimeMs,
+        (results) => onResults(results)
       );
-      onResults(results);
     }
 
     requestRef.current = requestAnimationFrame(predict);
@@ -231,12 +242,14 @@ export function WorkoutView() {
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
       }
+      if (scoreIntervalRef.current) {
+        clearInterval(scoreIntervalRef.current);
+      }
       poseLandmarkerRef.current?.close();
     };
   }, [predict]);
   
   const handleAudioEnd = () => {
-    // Allow new audio to be fetched after a short delay to prevent back-to-back requests.
     setTimeout(() => setIsAudioLoading(false), 500);
   };
 
@@ -266,20 +279,12 @@ export function WorkoutView() {
          <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
-          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
+          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/3 text-center">
             <p className="font-bold text-primary text-sm uppercase tracking-wider">
-              Reps
+              Form Score
             </p>
             <p className="text-5xl font-bold text-white tabular-nums">
-              {repCount}
-            </p>
-          </div>
-          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
-            <p className="font-bold text-primary text-sm uppercase tracking-wider">
-              Stage
-            </p>
-            <p className="text-3xl font-bold text-white capitalize">
-                {stage}
+              {Math.round(formScore)}
             </p>
           </div>
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-[200px]">
