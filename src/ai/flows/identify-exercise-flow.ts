@@ -4,8 +4,6 @@
  *
  * It exports the following:
  * - identifyExerciseFromPose: The main function to identify the exercise.
- * - IdentifyExerciseFromPoseInput: The Zod schema for the input.
- * - IdentifyExerciseFromPoseOutput: The Zod schema for the output.
  */
 
 import { ai } from '@/ai/genkit';
@@ -19,7 +17,7 @@ const LandmarkSchema = z.object({
   visibility: z.number().optional(),
 });
 
-export const IdentifyExerciseFromPoseInputSchema = z.object({
+const IdentifyExerciseFromPoseInputSchema = z.object({
   landmarks: z.array(LandmarkSchema),
 });
 
@@ -28,14 +26,14 @@ const exerciseNames = Object.keys(WORKOUTS_DATA) as [
   ...(keyof typeof WORKOUTS_DATA)[]
 ];
 
-export const IdentifyExerciseFromPoseOutputSchema = z.object({
+const IdentifyExerciseFromPoseOutputSchema = z.object({
   exerciseName: z.enum(exerciseNames).nullable(),
 });
 
-export type IdentifyExerciseFromPoseInput = z.infer<
+type IdentifyExerciseFromPoseInput = z.infer<
   typeof IdentifyExerciseFromPoseInputSchema
 >;
-export type IdentifyExerciseFromPoseOutput = z.infer<
+type IdentifyExerciseFromPoseOutput = z.infer<
   typeof IdentifyExerciseFromPoseOutputSchema
 >;
 
