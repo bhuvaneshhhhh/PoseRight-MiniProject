@@ -62,7 +62,7 @@ export function WorkoutView() {
           },
           runningMode: 'VIDEO',
           numPoses: 1,
-          outputSegmentationMasks: true,
+          outputSegmentationMasks: false,
         });
         setPoseLandmarker(landmarker);
       } catch (error) {
