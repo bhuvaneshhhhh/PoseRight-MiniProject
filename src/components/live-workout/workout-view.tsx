@@ -47,7 +47,6 @@ export function WorkoutView() {
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
   
   const identificationTimeoutId = useRef<NodeJS.Timeout | null>(null);
-  const feedbackTimeoutId = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const initMediaPipe = async () => {
@@ -129,29 +128,31 @@ export function WorkoutView() {
        if (identificationTimeoutId.current) {
         clearTimeout(identificationTimeoutId.current);
       }
-      if (feedbackTimeoutId.current) {
-        clearTimeout(feedbackTimeoutId.current);
-      }
     };
   }, [toast]);
 
   const getAIFeedback = useCallback(
     async (exercise: string, issues: string[]) => {
-      if (isGeneratingFeedback || issues.length === 0) return;
+      if (isGeneratingFeedback) return;
       setIsGeneratingFeedback(true);
+      
       try {
-        const { feedback } = await generateFeedbackForPose({
-          exerciseName: exercise,
-          issues,
-        });
-        setAiFeedback(feedback);
+        if (issues.length > 0) {
+            const { feedback } = await generateFeedbackForPose({
+              exerciseName: exercise,
+              issues,
+            });
+            setAiFeedback(feedback);
+        } else if (exercise !== 'STANDING') {
+             setAiFeedback('Excellent form! Keep it up.');
+        } else {
+            setAiFeedback('Ready to begin exercise.');
+        }
       } catch (error) {
         console.error('Error generating feedback:', error);
+        setAiFeedback('Could not generate feedback.');
       } finally {
-        if (feedbackTimeoutId.current) clearTimeout(feedbackTimeoutId.current);
-        feedbackTimeoutId.current = setTimeout(() => {
-          setIsGeneratingFeedback(false);
-        }, 5000); // 5 second cooldown for feedback
+        setTimeout(() => setIsGeneratingFeedback(false), 2000); // Cooldown to prevent spamming
       }
     },
     [isGeneratingFeedback]
@@ -249,9 +250,6 @@ export function WorkoutView() {
        if (identificationTimeoutId.current) {
         clearTimeout(identificationTimeoutId.current);
       }
-       if (feedbackTimeoutId.current) {
-        clearTimeout(feedbackTimeoutId.current);
-      }
     };
   }, [hasCameraPermission, poseLandmarker, getAIFeedback, getAIExercise, isIdentifying]);
 
@@ -310,15 +308,8 @@ export function WorkoutView() {
 
     setFormScore(Math.max(0, totalScore));
 
-    if (issues.length > 0) {
-      getAIFeedback(identifiedExercise, issues);
-    } else {
-      if (identifiedExercise !== 'STANDING') {
-        setAiFeedback('Excellent form! Keep it up.');
-      } else {
-        setAiFeedback('Ready to begin exercise.');
-      }
-    }
+    // Always call getAIFeedback. The function itself will handle cooldowns.
+    getAIFeedback(identifiedExercise, issues);
   };
 
   return (
