@@ -45,28 +45,41 @@ export function WorkoutView() {
 
   const handleNewFeedback = useCallback(
     async (issues: string[] = [], forceImmediate = false) => {
-      if (isAudioLoading && !forceImmediate) return;
+      // Clear any pending feedback requests
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
 
-      const { feedback: newFeedback } = await generateFeedbackForPose({
-        exerciseName: 'Bicep Curl',
-        issues: issues,
-      });
-      
-      if (newFeedback === feedbackText && !forceImmediate) return;
+      const generateAndPlayFeedback = async () => {
+        if (isAudioLoading) return;
 
-      setFeedbackText(newFeedback);
-      setIsAudioLoading(true);
-      try {
-        const { audio } = await generateAudioFeedback({ text: newFeedback });
-        if (audioRef.current) {
-          audioRef.current.src = audio;
-          audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+        const { feedback: newFeedback } = await generateFeedbackForPose({
+          exerciseName: 'Bicep Curl',
+          issues: issues,
+        });
+
+        if (newFeedback === feedbackText && !forceImmediate) return;
+
+        setFeedbackText(newFeedback);
+        setIsAudioLoading(true);
+
+        try {
+          const { audio } = await generateAudioFeedback({ text: newFeedback });
+          if (audioRef.current) {
+            audioRef.current.src = audio;
+            audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+          }
+        } catch (error) {
+          console.error('Failed to generate audio feedback:', error);
+          // Don't set loading to false here, let the onEnded handler do it.
         }
-      } catch (error) {
-        console.error('Failed to generate audio feedback:', error);
-      } finally {
-        // A short delay before we allow new audio to be fetched
-        setTimeout(() => setIsAudioLoading(false), 1000);
+      };
+
+      if (forceImmediate) {
+        generateAndPlayFeedback();
+      } else {
+        // Debounce feedback to avoid spamming
+        feedbackTimeoutRef.current = setTimeout(generateAndPlayFeedback, 1500);
       }
     },
     [isAudioLoading, feedbackText]
@@ -90,18 +103,16 @@ export function WorkoutView() {
       const drawingUtils = new DrawingUtils(canvasCtx);
       const landmarks = results.landmarks[0];
 
-      // Draw skeleton
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-        color: '#000000', // black
+        color: '#000000',
         lineWidth: 8,
       });
       drawingUtils.drawLandmarks(landmarks, {
-        color: '#808080', // grey
+        color: '#808080',
         lineWidth: 4,
         radius: 6,
       });
 
-      // --- Rule-based Logic for Bicep Curl ---
       try {
         const getLandmarkCoords = (idx: number) => [
           landmarks[idx].x * videoWidth,
@@ -116,22 +127,35 @@ export function WorkoutView() {
           rightElbow,
           rightWrist
         );
-
-        // State machine for rep counting
+        
+        let currentIssues: string[] = [];
         if (elbowAngle > MAX_ANGLE) {
-            setStage('DOWN');
+            if (stage !== 'DOWN') {
+                setStage('DOWN');
+            }
         } else if (elbowAngle < MIN_ANGLE) {
           if (stage === 'DOWN') {
             setRepCount((prev) => prev + 1);
             setStage('UP');
-            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-            // Give positive feedback on a successful rep
-            feedbackTimeoutRef.current = setTimeout(() => handleNewFeedback([], true), 200);
+            // Give positive feedback on a successful rep immediately
+            handleNewFeedback([], true);
           }
+        } else if (stage === 'DOWN' && elbowAngle < 140) {
+            // User is in the middle of a curl but hasn't gone all the way down
+            currentIssues.push("Fully extend your arm at the bottom.");
         }
+        
+        if (currentIssues.length > 0) {
+            handleNewFeedback(currentIssues);
+        } else {
+            // If there are no issues, clear any pending corrective feedback
+            if (feedbackTimeoutRef.current) {
+                clearTimeout(feedbackTimeoutRef.current);
+            }
+        }
+
+
       } catch (e) {
-        // This catch block is for when landmarks are not visible
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
         handleNewFeedback(['Arm not visible'], true);
       }
     } else {
@@ -203,6 +227,12 @@ export function WorkoutView() {
       poseLandmarkerRef.current?.close();
     };
   }, [predict]);
+  
+  const handleAudioEnd = () => {
+    // Allow new audio to be fetched after a short delay
+    setTimeout(() => setIsAudioLoading(false), 500);
+  };
+
 
   return (
     <div className="h-full w-full flex flex-col">
@@ -226,7 +256,7 @@ export function WorkoutView() {
               style={{ transform: 'scaleX(-1)' }}
             />
         </div>
-         <audio ref={audioRef} className="hidden" onEnded={() => setIsAudioLoading(false)} />
+         <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
