@@ -1,12 +1,13 @@
 'use client';
 
 import { generateFeedbackForPose } from '@/ai/flows/generate-feedback-flow';
+import { identifyExerciseFromPose } from '@/ai/flows/identify-exercise-flow';
 import { useToast } from '@/hooks/use-toast';
 import { POSE_CONNECTIONS, POSE_LANDMARKS, WORKOUTS_DATA } from '@/lib/poses';
 import {
   DrawingUtils,
   PoseLandmarker,
-  type PoseLandmarkerResult,
+  type NormalizedLandmark,
 } from '@mediapipe/tasks-vision';
 import { Loader, Video as VideoIcon } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -41,7 +42,11 @@ export function WorkoutView() {
   const [identifiedExercise, setIdentifiedExercise] = useState<string | null>(
     'Detecting...'
   );
+
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
+  
+  const identificationTimeoutId = useRef<NodeJS.Timeout | null>(null);
   const feedbackTimeoutId = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -61,7 +66,7 @@ export function WorkoutView() {
           },
           runningMode: 'VIDEO',
           numPoses: 1,
-          outputSegmentationMasks: false, 
+          outputSegmentationMasks: false,
         });
         setPoseLandmarker(landmarker);
       } catch (error) {
@@ -121,27 +126,53 @@ export function WorkoutView() {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
-       if (feedbackTimeoutId.current) {
+       if (identificationTimeoutId.current) {
+        clearTimeout(identificationTimeoutId.current);
+      }
+      if (feedbackTimeoutId.current) {
         clearTimeout(feedbackTimeoutId.current);
       }
     };
   }, [toast]);
 
-
-  const getAIFeedback = useCallback(async (exercise: string, issues: string[]) => {
-    if (isGeneratingFeedback || issues.length === 0) return;
-    setIsGeneratingFeedback(true);
-    try {
-        const { feedback } = await generateFeedbackForPose({ exerciseName: exercise, issues });
+  const getAIFeedback = useCallback(
+    async (exercise: string, issues: string[]) => {
+      if (isGeneratingFeedback || issues.length === 0) return;
+      setIsGeneratingFeedback(true);
+      try {
+        const { feedback } = await generateFeedbackForPose({
+          exerciseName: exercise,
+          issues,
+        });
         setAiFeedback(feedback);
-    } catch (error) {
+      } catch (error) {
         console.error('Error generating feedback:', error);
+      } finally {
+        if (feedbackTimeoutId.current) clearTimeout(feedbackTimeoutId.current);
+        feedbackTimeoutId.current = setTimeout(() => {
+          setIsGeneratingFeedback(false);
+        }, 5000); // 5 second cooldown for feedback
+      }
+    },
+    [isGeneratingFeedback]
+  );
+  
+  const getAIExercise = useCallback(async (landmarks: NormalizedLandmark[]) => {
+    if (isIdentifying) return;
+    setIsIdentifying(true);
+    try {
+        const { exerciseName } = await identifyExerciseFromPose({ landmarks });
+        setIdentifiedExercise(exerciseName);
+    } catch (error) {
+        console.error("Error identifying exercise", error);
     } finally {
-      setTimeout(() => {
-        setIsGeneratingFeedback(false);
-      }, 5000); // 5 second cooldown
+        if (identificationTimeoutId.current) clearTimeout(identificationTimeoutId.current);
+        identificationTimeoutId.current = setTimeout(() => {
+            setIsIdentifying(false);
+        }, 5000); // 5 second cooldown for identification
     }
-  }, [isGeneratingFeedback]);
+  }, [isIdentifying]);
+
 
   // Prediction loop
   useEffect(() => {
@@ -171,21 +202,26 @@ export function WorkoutView() {
 
         if (results.landmarks && results.landmarks.length > 0) {
           const landmarks = results.landmarks[0];
-          
-          analyzePoseAndDetectExercise(landmarks);
+
+          // AI Identification
+          if (!isIdentifying) {
+              getAIExercise(landmarks);
+          }
+
+          // Algorithmic Analysis
+          analyzePose(landmarks);
 
           // Draw skeleton
           drawingUtils.drawLandmarks(
-            landmarks.filter(lm => (lm.visibility ?? 0) > 0.5),
+            landmarks.filter((lm) => (lm.visibility ?? 0) > 0.5),
             { radius: 6, color: 'black', fillColor: 'black' }
           );
           drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, {
             color: 'black',
             lineWidth: 8,
           });
-
         } else {
-          setIdentifiedExercise('NO_PERSON');
+          setIdentifiedExercise(null);
           setFormScore(0);
           setAiFeedback('No person detected in frame.');
         }
@@ -210,75 +246,78 @@ export function WorkoutView() {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
-      if (feedbackTimeoutId.current) {
+       if (identificationTimeoutId.current) {
+        clearTimeout(identificationTimeoutId.current);
+      }
+       if (feedbackTimeoutId.current) {
         clearTimeout(feedbackTimeoutId.current);
       }
     };
-  }, [hasCameraPermission, poseLandmarker, getAIFeedback]);
+  }, [hasCameraPermission, poseLandmarker, getAIFeedback, getAIExercise, isIdentifying]);
 
-  const analyzePoseAndDetectExercise = (landmarks: any[]) => {
+  const analyzePose = (landmarks: NormalizedLandmark[]) => {
+    if (!identifiedExercise) {
+        setFormScore(0);
+        setAiFeedback("Ready to begin exercise.");
+        return;
+    };
+
     const keypointsMap: { [key: string]: any } = {};
     landmarks.forEach((lm, i) => {
       const name = POSE_LANDMARKS[i];
       if (name) keypointsMap[name] = lm;
     });
 
-    let detectedExercise = 'STANDING'; // Default to standing
     let currentStage = 'up';
     let totalScore = 100;
     const issues: string[] = [];
 
-    // Check for Squat
-    const kneeAngle = calculateAngle(keypointsMap['left_hip'], keypointsMap['left_knee'], keypointsMap['left_ankle']);
-    const hipAngle = calculateAngle(keypointsMap['left_shoulder'], keypointsMap['left_hip'], keypointsMap['left_knee']);
-
-    if (kneeAngle < 160 || hipAngle < 160) {
-        detectedExercise = 'SQUAT';
-        if (kneeAngle < 110) {
-            currentStage = 'down';
-        } else {
-            currentStage = 'up';
-        }
-    } else {
-        detectedExercise = 'STANDING';
-        currentStage = 'up';
-    }
+    const exerciseData =
+      WORKOUTS_DATA[identifiedExercise as keyof typeof WORKOUTS_DATA];
+    if (!exerciseData) {
+        setFormScore(0);
+        return;
+    };
     
-    // Set identified exercise
-    setIdentifiedExercise(detectedExercise);
+    // Determine current stage for exercises that have them (like Squat)
+    if (identifiedExercise === 'SQUAT') {
+        const kneeAngle = calculateAngle(keypointsMap['left_hip'], keypointsMap['left_knee'], keypointsMap['left_ankle']);
+        if (kneeAngle < 120) {
+            currentStage = 'down';
+        }
+    }
+
 
     // Form Scoring & Feedback Logic
-    const exerciseData = WORKOUTS_DATA[detectedExercise as keyof typeof WORKOUTS_DATA];
-    if (exerciseData) {
-      const stageData = exerciseData.stages[currentStage as keyof typeof exerciseData.stages];
-      if (stageData) {
-        for (const joint in stageData.rules) {
-            const rule = stageData.rules[joint as keyof typeof stageData.rules];
-            const p1 = keypointsMap[rule.p1];
-            const p2 = keypointsMap[rule.p2];
-            const p3 = keypointsMap[rule.p3];
-            
-            if (p1?.visibility > 0.5 && p2?.visibility > 0.5 && p3?.visibility > 0.5) {
-                const angle = calculateAngle(p1, p2, p3);
-                if (angle < rule.angle.min || angle > rule.angle.max) {
-                    totalScore -= 25; // Deduct points for each issue
-                    issues.push(rule.feedback);
-                }
-            }
+    const stageData =
+      exerciseData.stages[currentStage as keyof typeof exerciseData.stages];
+    if (stageData) {
+      for (const joint in stageData.rules) {
+        const rule = stageData.rules[joint as keyof typeof stageData.rules];
+        const p1 = keypointsMap[rule.p1];
+        const p2 = keypointsMap[rule.p2];
+        const p3 = keypointsMap[rule.p3];
+
+        if (p1?.visibility > 0.5 && p2?.visibility > 0.5 && p3?.visibility > 0.5) {
+          const angle = calculateAngle(p1, p2, p3);
+          if (angle < rule.angle.min || angle > rule.angle.max) {
+            totalScore -= 25; // Deduct points for each issue
+            issues.push(rule.feedback);
           }
+        }
       }
     }
 
     setFormScore(Math.max(0, totalScore));
 
     if (issues.length > 0) {
-        getAIFeedback(detectedExercise, issues);
+      getAIFeedback(identifiedExercise, issues);
     } else {
-        if (detectedExercise !== 'STANDING') {
-            setAiFeedback("Great form! Keep it up.");
-        } else {
-            setAiFeedback("Ready to begin exercise.");
-        }
+      if (identifiedExercise !== 'STANDING') {
+        setAiFeedback('Excellent form! Keep it up.');
+      } else {
+        setAiFeedback('Ready to begin exercise.');
+      }
     }
   };
 
@@ -288,7 +327,7 @@ export function WorkoutView() {
         <h1 className="font-headline text-3xl font-bold">Live Workout</h1>
         <Card className="p-2 px-4">
           <div className="flex items-center gap-2">
-            {isGeneratingFeedback ? (
+            {isIdentifying ? (
               <Loader className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
               <VideoIcon className="h-5 w-5 text-primary" />
@@ -305,7 +344,7 @@ export function WorkoutView() {
         </Card>
       </div>
       <p className="text-muted-foreground mb-8">
-        Real-time form correction powered by our algorithmic engine.
+        Real-time form correction powered by our hybrid AI and algorithmic engine.
       </p>
       <Card>
         <CardContent className="p-4">
