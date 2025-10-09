@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -9,7 +10,6 @@ import { Dumbbell } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { Card, CardContent } from '../ui/card';
-import { POSE_CONNECTIONS } from '@mediapipe/pose';
 
 /**
  * Calculates the angle (in degrees) between three 2D points (x, y).
@@ -40,64 +40,6 @@ export function WorkoutView() {
   const MIN_ANGLE = 45;
   const MAX_ANGLE = 160;
 
-  const predict = useCallback(() => {
-    if (
-      !webcamRef.current ||
-      !webcamRef.current.video ||
-      !poseLandmarkerRef.current
-    ) {
-      return;
-    }
-
-    const video = webcamRef.current.video;
-    if (video.readyState < 2) {
-      requestRef.current = requestAnimationFrame(predict);
-      return;
-    }
-
-    if (video.currentTime !== lastVideoTimeRef.current) {
-      lastVideoTimeRef.current = video.currentTime;
-      const startTimeMs = performance.now();
-      const results = poseLandmarkerRef.current.detectForVideo(
-        video,
-        startTimeMs
-      );
-      onResults(results);
-    }
-
-    requestRef.current = requestAnimationFrame(predict);
-  }, []);
-
-  useEffect(() => {
-    const initializePoseLandmarker = async () => {
-      const { PoseLandmarker, FilesetResolver } = await import(
-        '@mediapipe/tasks-vision'
-      );
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-      );
-      const landmarker = await PoseLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numPoses: 1,
-        outputSegmentationMasks: false,
-      });
-      poseLandmarkerRef.current = landmarker;
-      requestRef.current = requestAnimationFrame(predict);
-    };
-    initializePoseLandmarker();
-
-    return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-      poseLandmarkerRef.current?.close();
-    };
-  }, [predict]);
-
   const onResults = (results: PoseLandmarkerResult) => {
     const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
     const videoHeight = webcamRef.current?.video?.videoHeight || 720;
@@ -117,7 +59,7 @@ export function WorkoutView() {
       const landmarks = results.landmarks[0];
 
       // Draw skeleton
-      drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, {
+      drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
         color: '#00FF00',
         lineWidth: 4,
       });
@@ -171,6 +113,65 @@ export function WorkoutView() {
     }
     canvasCtx.restore();
   };
+
+  const predict = useCallback(() => {
+    if (
+      !webcamRef.current ||
+      !webcamRef.current.video ||
+      !poseLandmarkerRef.current
+    ) {
+      requestRef.current = requestAnimationFrame(predict);
+      return;
+    }
+
+    const video = webcamRef.current.video;
+    if (video.readyState < 2) {
+      requestRef.current = requestAnimationFrame(predict);
+      return;
+    }
+
+    if (video.currentTime !== lastVideoTimeRef.current) {
+      lastVideoTimeRef.current = video.currentTime;
+      const startTimeMs = performance.now();
+      const results = poseLandmarkerRef.current.detectForVideo(
+        video,
+        startTimeMs
+      );
+      onResults(results);
+    }
+
+    requestRef.current = requestAnimationFrame(predict);
+  }, []);
+
+  useEffect(() => {
+    const initializePoseLandmarker = async () => {
+      const { PoseLandmarker, FilesetResolver } = await import(
+        '@mediapipe/tasks-vision'
+      );
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+      const landmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        outputSegmentationMasks: false,
+      });
+      poseLandmarkerRef.current = landmarker;
+      requestRef.current = requestAnimationFrame(predict);
+    };
+    initializePoseLandmarker();
+
+    return () => {
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+      poseLandmarkerRef.current?.close();
+    };
+  }, [predict]);
 
   return (
     <div>
