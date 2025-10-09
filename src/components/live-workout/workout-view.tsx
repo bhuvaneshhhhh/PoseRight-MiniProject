@@ -44,13 +44,14 @@ export function WorkoutView() {
   const MAX_ANGLE = 160;
 
   const handleNewFeedback = useCallback(
-    async (issues: string[] = [], forceImmediate = false) => {
-      // Clear any pending feedback requests
+    (issues: string[] = [], forceImmediate = false) => {
+      // Always clear any pending feedback to prevent backlogs.
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current);
       }
 
       const generateAndPlayFeedback = async () => {
+        // Double-check loading state before proceeding.
         if (isAudioLoading) return;
 
         const { feedback: newFeedback } = await generateFeedbackForPose({
@@ -58,6 +59,7 @@ export function WorkoutView() {
           issues: issues,
         });
 
+        // If the feedback is the same as what's currently shown, don't re-generate audio.
         if (newFeedback === feedbackText && !forceImmediate) return;
 
         setFeedbackText(newFeedback);
@@ -67,22 +69,28 @@ export function WorkoutView() {
           const { audio } = await generateAudioFeedback({ text: newFeedback });
           if (audioRef.current) {
             audioRef.current.src = audio;
-            audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+            audioRef.current.play().catch(e => {
+              console.error("Audio playback failed:", e);
+              // If playback fails, immediately allow new feedback.
+              setIsAudioLoading(false);
+            });
+          } else {
+             setIsAudioLoading(false);
           }
         } catch (error) {
           console.error('Failed to generate audio feedback:', error);
-          // Don't set loading to false here, let the onEnded handler do it.
+          setIsAudioLoading(false);
         }
       };
 
       if (forceImmediate) {
         generateAndPlayFeedback();
       } else {
-        // Debounce feedback to avoid spamming
+        // Debounce corrective feedback to avoid spamming the API.
         feedbackTimeoutRef.current = setTimeout(generateAndPlayFeedback, 1500);
       }
     },
-    [isAudioLoading, feedbackText]
+    [isAudioLoading, feedbackText] // Dependencies are correct
   );
 
   const onResults = (results: PoseLandmarkerResult) => {
@@ -153,7 +161,6 @@ export function WorkoutView() {
                 clearTimeout(feedbackTimeoutRef.current);
             }
         }
-
 
       } catch (e) {
         handleNewFeedback(['Arm not visible'], true);
@@ -229,7 +236,7 @@ export function WorkoutView() {
   }, [predict]);
   
   const handleAudioEnd = () => {
-    // Allow new audio to be fetched after a short delay
+    // Allow new audio to be fetched after a short delay to prevent back-to-back requests.
     setTimeout(() => setIsAudioLoading(false), 500);
   };
 
