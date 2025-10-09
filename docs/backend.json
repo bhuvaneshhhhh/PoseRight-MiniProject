@@ -1,0 +1,418 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile information within the TempoAI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user profile."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography or description of the user."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "URL or path to the user's profile picture."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email"
+      ]
+    },
+    "WorkoutSchedule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkoutSchedule",
+      "type": "object",
+      "description": "Represents a user's customized workout schedule.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the workout schedule."
+        },
+        "userProfileId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N WorkoutSchedule)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the workout schedule (e.g., 'Monday Morning Workout')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the workout schedule."
+        },
+        "workoutIds": {
+          "type": "array",
+          "description": "References to Workouts. (Relationship: WorkoutSchedule 1:N Workout)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userProfileId",
+        "name"
+      ]
+    },
+    "Workout": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Workout",
+      "type": "object",
+      "description": "Represents a single workout session or exercise routine.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the workout."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the workout (e.g., 'Leg Day', 'Cardio Blast')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the workout routine."
+        },
+        "duration": {
+          "type": "number",
+          "description": "The planned duration of the workout in minutes."
+        },
+        "exerciseIds": {
+          "type": "array",
+          "description": "References to Exercises. (Relationship: Workout 1:N Exercise)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "duration"
+      ]
+    },
+    "Exercise": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Exercise",
+      "type": "object",
+      "description": "Represents a specific exercise within a workout.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the exercise."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the exercise (e.g., 'Squats', 'Push-ups')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of how to perform the exercise."
+        },
+        "sets": {
+          "type": "number",
+          "description": "The number of sets for the exercise."
+        },
+        "reps": {
+          "type": "number",
+          "description": "The number of repetitions for each set."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "sets",
+        "reps"
+      ]
+    },
+    "AiChatbotMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AiChatbotMessage",
+      "type": "object",
+      "description": "Represents a message exchanged within the AI Chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AI Chatbot message."
+        },
+        "userProfileId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N AiChatbotMessage)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        },
+        "sender": {
+          "type": "string",
+          "description": "The sender of the message (either 'user' or 'ai')."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the message."
+        }
+      },
+      "required": [
+        "id",
+        "userProfileId",
+        "timestamp",
+        "sender",
+        "content"
+      ]
+    },
+    "LiveWorkoutSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LiveWorkoutSession",
+      "type": "object",
+      "description": "Represents a live workout session, capturing the user's performance and form scores.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the live workout session."
+        },
+        "userProfileId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N LiveWorkoutSession)"
+        },
+        "startTimestamp": {
+          "type": "string",
+          "description": "Timestamp of when the workout session started.",
+          "format": "date-time"
+        },
+        "endTimestamp": {
+          "type": "string",
+          "description": "Timestamp of when the workout session ended.",
+          "format": "date-time"
+        },
+        "workoutId": {
+          "type": "string",
+          "description": "Reference to Workout. (Relationship: LiveWorkoutSession 1:1 Workout)"
+        },
+        "formScores": {
+          "type": "array",
+          "description": "Array of form scores recorded during the workout session.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "advices": {
+          "type": "array",
+          "description": "Array of advices given during the workout session.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userProfileId",
+        "startTimestamp",
+        "workoutId"
+      ]
+    },
+    "ProgressTracking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProgressTracking",
+      "type": "object",
+      "description": "Represents the user's progress tracking data, including workout completion and personal bests.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the progress tracking data."
+        },
+        "userProfileId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N ProgressTracking)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date for which the progress is tracked.",
+          "format": "date"
+        },
+        "workoutCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the user completed the workout on the given date."
+        },
+        "personalBests": {
+          "type": "array",
+          "description": "Array of personal bests achieved on the given date.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "consistencyScore": {
+          "type": "number",
+          "description": "A score representing the user's consistency in working out."
+        }
+      },
+      "required": [
+        "id",
+        "userProfileId",
+        "date"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/profile",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information. This path enforces ownership by userId. The document ID will be 'profile' to ensure there's only one profile per user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workoutSchedules/{workoutScheduleId}",
+        "definition": {
+          "entityName": "WorkoutSchedule",
+          "schema": {
+            "$ref": "#/backend/entities/WorkoutSchedule"
+          },
+          "description": "Stores user workout schedules, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "workoutScheduleId",
+              "description": "The unique identifier for the workout schedule."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workouts/{workoutId}",
+        "definition": {
+          "entityName": "Workout",
+          "schema": {
+            "$ref": "#/backend/entities/Workout"
+          },
+          "description": "Stores user workouts, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "workoutId",
+              "description": "The unique identifier for the workout."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/exercises/{exerciseId}",
+        "definition": {
+          "entityName": "Exercise",
+          "schema": {
+            "$ref": "#/backend/entities/Exercise"
+          },
+          "description": "Stores user exercises, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "exerciseId",
+              "description": "The unique identifier for the exercise."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/aiChatbotMessages/{aiChatbotMessageId}",
+        "definition": {
+          "entityName": "AiChatbotMessage",
+          "schema": {
+            "$ref": "#/backend/entities/AiChatbotMessage"
+          },
+          "description": "Stores AI Chatbot messages, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "aiChatbotMessageId",
+              "description": "The unique identifier for the AI Chatbot message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/liveWorkoutSessions/{liveWorkoutSessionId}",
+        "definition": {
+          "entityName": "LiveWorkoutSession",
+          "schema": {
+            "$ref": "#/backend/entities/LiveWorkoutSession"
+          },
+          "description": "Stores live workout sessions, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "liveWorkoutSessionId",
+              "description": "The unique identifier for the live workout session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/progressTracking/{progressTrackingId}",
+        "definition": {
+          "entityName": "ProgressTracking",
+          "schema": {
+            "$ref": "#/backend/entities/ProgressTracking"
+          },
+          "description": "Stores progress tracking data, owned by the user. Enforces ownership by userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "progressTrackingId",
+              "description": "The unique identifier for the progress tracking data."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging, in accordance with the defined principles.  User profiles and associated data (workout schedules, workouts, exercises, chatbot messages, live workout sessions, and progress tracking) are stored under the `/users/{userId}` path to ensure path-based ownership and simplified security rules. This structure provides authorization independence since all data is owned by the user, eliminating the need for complex `get()` calls in security rules. Profile pictures will be stored as a URL string directly inside the UserProfile entity. The structure supports the required QAPs by using segregation, where each user's data is stored separately under their respective user ID. There is no mixing of public and private data within the same collection, further simplifying security rules."
+  }
+}
