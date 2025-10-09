@@ -5,10 +5,10 @@ import {
   PoseLandmarker,
   type PoseLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import { Card, CardContent } from '../ui/card';
+import { generateAudioFeedback } from '@/ai/flows/generate-audio-feedback-flow';
 
 /**
  * Calculates the angle (in degrees) between three 2D points (x, y).
@@ -28,16 +28,36 @@ const calculateAngle = (a: number[], b: number[], c: number[]): number => {
 export function WorkoutView() {
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const lastVideoTimeRef = useRef(-1);
   const requestRef = useRef<number>();
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
 
   const [repCount, setRepCount] = useState(0);
   const [stage, setStage] = useState('DOWN');
-  const [feedback, setFeedback] = useState('Begin Bicep Curls');
+  const [feedbackText, setFeedbackText] = useState('Begin Bicep Curls');
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
 
   const MIN_ANGLE = 45;
   const MAX_ANGLE = 160;
+
+  const handleNewFeedback = useCallback(async (newFeedback: string) => {
+    if (newFeedback === feedbackText) return; // Avoid re-processing the same feedback
+
+    setFeedbackText(newFeedback);
+    setIsAudioLoading(true);
+    try {
+      const { audio } = await generateAudioFeedback({ text: newFeedback });
+      if (audioRef.current) {
+        audioRef.current.src = audio;
+        audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+      }
+    } catch (error) {
+      console.error('Failed to generate audio feedback:', error);
+    } finally {
+      setIsAudioLoading(false);
+    }
+  }, [feedbackText]);
 
   const onResults = (results: PoseLandmarkerResult) => {
     const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
@@ -59,11 +79,11 @@ export function WorkoutView() {
 
       // Draw skeleton
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-        color: '#00FF00',
+        color: '#000000', // black
         lineWidth: 4,
       });
       drawingUtils.drawLandmarks(landmarks, {
-        color: '#FF0000',
+        color: '#808080', // grey
         lineWidth: 2,
         radius: 4,
       });
@@ -87,28 +107,21 @@ export function WorkoutView() {
         if (elbowAngle > MAX_ANGLE) {
           if (stage !== 'DOWN') {
             setStage('DOWN');
+            handleNewFeedback('Extend your arm fully.');
           }
         } else if (elbowAngle < MIN_ANGLE) {
           if (stage === 'DOWN') {
             setRepCount((prev) => prev + 1);
             setStage('UP');
-            setFeedback('Great rep! Now slowly lower.');
-          } else {
-            setFeedback('Hold the contraction!');
+            handleNewFeedback('Great rep! Now slowly lower.');
           }
-        } else {
-          setFeedback(`Angle: ${elbowAngle.toFixed(0)}°`);
-        }
-
-        if (stage === 'DOWN' && elbowAngle < MAX_ANGLE - 10 && elbowAngle > MIN_ANGLE) {
-            setFeedback('Extend your arm fully at the bottom.');
         }
 
       } catch (e) {
-        setFeedback('Please make sure your full arm is in view.');
+        handleNewFeedback('Please make sure your full arm is in view.');
       }
     } else {
-      setFeedback('No person detected.');
+      handleNewFeedback('No person detected.');
     }
     canvasCtx.restore();
   };
@@ -140,7 +153,7 @@ export function WorkoutView() {
     }
 
     requestRef.current = requestAnimationFrame(predict);
-  }, []);
+  }, [handleNewFeedback]);
 
   useEffect(() => {
     const initializePoseLandmarker = async () => {
@@ -173,25 +186,26 @@ export function WorkoutView() {
   }, [predict]);
 
   return (
-    <div className="h-full flex flex-col">
-      <header className="p-4 border-b">
+    <div className="h-full w-full flex flex-col">
+      <header className="p-4 border-b bg-background z-10">
         <h1 className="font-headline text-3xl font-bold">Live Workout</h1>
         <p className="text-muted-foreground">
           Real-time bicep curl detection and form analysis.
         </p>
       </header>
-      <div className="flex-1 relative">
+      <div className="flex-1 relative bg-black">
         <Webcam
           ref={webcamRef}
           mirrored={true}
-          className="absolute w-full h-full object-cover"
+          className="absolute w-full h-full object-contain"
           videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
         />
         <canvas
           ref={canvasRef}
-          className="absolute w-full h-full object-cover"
+          className="absolute w-full h-full object-contain"
           style={{ transform: 'scaleX(-1)' }}
         />
+         <audio ref={audioRef} className="hidden" />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
@@ -211,10 +225,14 @@ export function WorkoutView() {
             </p>
           </div>
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-[200px]">
-              <Dumbbell className="w-8 h-8 text-primary" />
+              {isAudioLoading ? (
+                <Volume2 className="w-8 h-8 text-primary animate-pulse" />
+              ) : (
+                <Dumbbell className="w-8 h-8 text-primary" />
+              )}
               <div>
                 <p className="font-bold text-primary">Feedback</p>
-                <p className="text-lg text-white">{feedback}</p>
+                <p className="text-lg text-white">{feedbackText}</p>
               </div>
           </div>
         </div>
