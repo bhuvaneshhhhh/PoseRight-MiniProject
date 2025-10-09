@@ -9,6 +9,7 @@ import { Dumbbell, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { generateAudioFeedback } from '@/ai/flows/generate-audio-feedback-flow';
+import { generateFeedbackForPose } from '@/ai/flows/generate-feedback-flow';
 
 /**
  * Calculates the angle (in degrees) between three 2D points (x, y).
@@ -32,6 +33,7 @@ export function WorkoutView() {
   const lastVideoTimeRef = useRef(-1);
   const requestRef = useRef<number>();
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [repCount, setRepCount] = useState(0);
   const [stage, setStage] = useState('DOWN');
@@ -41,24 +43,33 @@ export function WorkoutView() {
   const MIN_ANGLE = 45;
   const MAX_ANGLE = 160;
 
-  const handleNewFeedback = useCallback(async (newFeedback: string) => {
-    // Only generate new audio if there's no audio currently loading and the message is new
-    if (isAudioLoading || newFeedback === feedbackText) return;
+  const handleNewFeedback = useCallback(
+    async (issues: string[] = [], forceImmediate = false) => {
+      if (isAudioLoading) return;
 
-    setFeedbackText(newFeedback);
-    setIsAudioLoading(true);
-    try {
-      const { audio } = await generateAudioFeedback({ text: newFeedback });
-      if (audioRef.current) {
-        audioRef.current.src = audio;
-        audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+      const newFeedback = await generateFeedbackForPose({
+        exerciseName: 'Bicep Curl',
+        issues: issues,
+      });
+
+      if (newFeedback.feedback === feedbackText && !forceImmediate) return;
+
+      setFeedbackText(newFeedback.feedback);
+      setIsAudioLoading(true);
+      try {
+        const { audio } = await generateAudioFeedback({ text: newFeedback.feedback });
+        if (audioRef.current) {
+          audioRef.current.src = audio;
+          audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
+        }
+      } catch (error) {
+        console.error('Failed to generate audio feedback:', error);
+      } finally {
+        setIsAudioLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to generate audio feedback:', error);
-    } finally {
-      setIsAudioLoading(false);
-    }
-  }, [isAudioLoading, feedbackText]);
+    },
+    [isAudioLoading, feedbackText]
+  );
 
   const onResults = (results: PoseLandmarkerResult) => {
     const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
@@ -109,22 +120,24 @@ export function WorkoutView() {
         if (elbowAngle > MAX_ANGLE) {
           if (stage !== 'DOWN') {
             setStage('DOWN');
-            handleNewFeedback('Extend your arm fully.');
+            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+            feedbackTimeoutRef.current = setTimeout(() => handleNewFeedback(['Not extending arm fully']), 500);
           }
         } else if (elbowAngle < MIN_ANGLE) {
           if (stage === 'DOWN') {
             setRepCount((prev) => prev + 1);
             setStage('UP');
-            handleNewFeedback('Great rep! Now slowly lower.');
+            if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+            feedbackTimeoutRef.current = setTimeout(() => handleNewFeedback([], true), 200);
           }
         }
-
       } catch (e) {
         // This catch block is for when landmarks are not visible
-        handleNewFeedback('Please make sure your full arm is in view.');
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        handleNewFeedback(['Arm not visible'], true);
       }
     } else {
-      handleNewFeedback('No person detected.');
+      setFeedbackText('No person detected.');
     }
     canvasCtx.restore();
   };
@@ -186,6 +199,9 @@ export function WorkoutView() {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
       }
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
       poseLandmarkerRef.current?.close();
     };
   }, [predict]);
@@ -212,7 +228,7 @@ export function WorkoutView() {
               style={{ transform: 'scaleX(-1)' }}
             />
         </div>
-         <audio ref={audioRef} className="hidden" />
+         <audio ref={audioRef} className="hidden" onEnded={() => setIsAudioLoading(false)} />
 
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
           <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">

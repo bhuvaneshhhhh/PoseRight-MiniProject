@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import wav from 'wav';
-import { googleAI }from '@genkit-ai/googleai';
+import { googleAI }from '@genkit-ai/google-genai';
 
 /**
  * Converts PCM audio data to a Base64 encoded WAV data URI.
