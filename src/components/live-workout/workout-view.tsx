@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -174,57 +173,52 @@ export function WorkoutView() {
   }, [predict]);
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-4">
+    <div className="h-full flex flex-col">
+      <header className="p-4 border-b">
         <h1 className="font-headline text-3xl font-bold">Live Workout</h1>
-      </div>
-      <p className="text-muted-foreground mb-8">
-        Real-time bicep curl detection and form analysis.
-      </p>
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden">
-            <Webcam
-              ref={webcamRef}
-              mirrored={true}
-              className="absolute w-full h-full object-cover"
-              videoConstraints={{ width: 1280, height: 720 }}
-              style={{ opacity: 1 }} 
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
-            />
+        <p className="text-muted-foreground">
+          Real-time bicep curl detection and form analysis.
+        </p>
+      </header>
+      <div className="flex-1 relative">
+        <Webcam
+          ref={webcamRef}
+          mirrored={true}
+          className="absolute w-full h-full object-cover"
+          videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+        />
 
-            <div className="absolute bottom-4 left-4 right-4 flex gap-4">
-              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
-                <p className="font-bold text-primary text-sm uppercase tracking-wider">
-                  Reps
-                </p>
-                <p className="text-5xl font-bold text-white tabular-nums">
-                  {repCount}
-                </p>
-              </div>
-              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
-                <p className="font-bold text-primary text-sm uppercase tracking-wider">
-                  Stage
-                </p>
-                <p className="text-3xl font-bold text-white capitalize">
-                    {stage}
-                </p>
-              </div>
-              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4">
-                 <Dumbbell className="w-8 h-8 text-primary" />
-                 <div>
-                    <p className="font-bold text-primary">Feedback</p>
-                    <p className="text-lg text-white">{feedback}</p>
-                 </div>
-              </div>
-            </div>
+        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
+          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
+            <p className="font-bold text-primary text-sm uppercase tracking-wider">
+              Reps
+            </p>
+            <p className="text-5xl font-bold text-white tabular-nums">
+              {repCount}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
+            <p className="font-bold text-primary text-sm uppercase tracking-wider">
+              Stage
+            </p>
+            <p className="text-3xl font-bold text-white capitalize">
+                {stage}
+            </p>
+          </div>
+          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-[200px]">
+              <Dumbbell className="w-8 h-8 text-primary" />
+              <div>
+                <p className="font-bold text-primary">Feedback</p>
+                <p className="text-lg text-white">{feedback}</p>
+              </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
