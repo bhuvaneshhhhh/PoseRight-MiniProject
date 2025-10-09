@@ -196,7 +196,7 @@ export function WorkoutView() {
             exerciseIdentificationTimeoutId.current = setTimeout(() => {
               identifyExercise(landmarks);
               exerciseIdentificationTimeoutId.current = null;
-            }, 3000);
+            }, 5000);
           }
         } else {
           setAiFeedback('No person detected.');
