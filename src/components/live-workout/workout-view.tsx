@@ -1,392 +1,226 @@
 'use client';
 
-import { generateFeedbackForPose } from '@/ai/flows/generate-feedback-flow';
-import { identifyExerciseFromPose } from '@/ai/flows/identify-exercise-flow';
-import { useToast } from '@/hooks/use-toast';
-import { POSE_CONNECTIONS, POSE_LANDMARKS, WORKOUTS_DATA } from '@/lib/poses';
 import {
   DrawingUtils,
   PoseLandmarker,
-  type NormalizedLandmark,
+  type PoseLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import { Loader, Video as VideoIcon } from 'lucide-react';
+import { Dumbbell } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import Webcam from 'react-webcam';
 import { Card, CardContent } from '../ui/card';
+import { POSE_CONNECTIONS } from '@mediapipe/pose';
 
-let lastVideoTime = -1;
-
-// Function to calculate the angle between three points
-function calculateAngle(a: any, b: any, c: any): number {
+/**
+ * Calculates the angle (in degrees) between three 2D points (x, y).
+ */
+const calculateAngle = (a: number[], b: number[], c: number[]): number => {
+  if (a.length < 2 || b.length < 2 || c.length < 2) return 0;
   const radians =
-    Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-  let angle = Math.abs((radians * 180.0) / Math.PI);
-  if (angle > 180) {
+    Math.atan2(c[1] - b[1], c[0] - b[0]) -
+    Math.atan2(a[1] - b[1], a[0] - b[0]);
+  let angle = Math.abs(radians * (180.0 / Math.PI));
+  if (angle > 180.0) {
     angle = 360 - angle;
   }
   return angle;
-}
+};
 
 export function WorkoutView() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState(false);
-  const [poseLandmarker, setPoseLandmarker] = useState<PoseLandmarker | null>(
-    null
-  );
-  const { toast } = useToast();
-  const animationFrameId = useRef<number | null>(null);
+  const lastVideoTimeRef = useRef(-1);
+  const requestRef = useRef<number>();
+  const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
 
-  const [formScore, setFormScore] = useState(0);
-  const [aiFeedback, setAiFeedback] = useState('Waiting to start...');
-  const [identifiedExercise, setIdentifiedExercise] = useState<string | null>(
-    'Detecting...'
-  );
+  const [repCount, setRepCount] = useState(0);
+  const [stage, setStage] = useState('DOWN');
+  const [feedback, setFeedback] = useState('Begin Bicep Curls');
 
-  const [isIdentifying, setIsIdentifying] = useState(false);
-  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
-  
-  const identificationTimeoutId = useRef<NodeJS.Timeout | null>(null);
+  const MIN_ANGLE = 45;
+  const MAX_ANGLE = 160;
+
+  const predict = useCallback(() => {
+    if (
+      !webcamRef.current ||
+      !webcamRef.current.video ||
+      !poseLandmarkerRef.current
+    ) {
+      return;
+    }
+
+    const video = webcamRef.current.video;
+    if (video.readyState < 2) {
+      requestRef.current = requestAnimationFrame(predict);
+      return;
+    }
+
+    if (video.currentTime !== lastVideoTimeRef.current) {
+      lastVideoTimeRef.current = video.currentTime;
+      const startTimeMs = performance.now();
+      const results = poseLandmarkerRef.current.detectForVideo(
+        video,
+        startTimeMs
+      );
+      onResults(results);
+    }
+
+    requestRef.current = requestAnimationFrame(predict);
+  }, []);
 
   useEffect(() => {
-    const initMediaPipe = async () => {
-      try {
-        const { PoseLandmarker, FilesetResolver } = await import(
-          '@mediapipe/tasks-vision'
-        );
-        const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-        );
-        const landmarker = await PoseLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
-            delegate: 'GPU',
-          },
-          runningMode: 'VIDEO',
-          numPoses: 1,
-          outputSegmentationMasks: false,
-        });
-        setPoseLandmarker(landmarker);
-      } catch (error) {
-        console.error('Error initializing MediaPipe:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Initialization Error',
-          description:
-            'Failed to load the pose tracking model. Please refresh the page.',
-        });
-      }
+    const initializePoseLandmarker = async () => {
+      const { PoseLandmarker, FilesetResolver } = await import(
+        '@mediapipe/tasks-vision'
+      );
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+      const landmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        outputSegmentationMasks: false,
+      });
+      poseLandmarkerRef.current = landmarker;
+      requestRef.current = requestAnimationFrame(predict);
     };
-    initMediaPipe();
-  }, [toast]);
-
-  // Request camera permission
-  useEffect(() => {
-    const getCameraPermission = async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast({
-          variant: 'destructive',
-          title: 'Camera Not Supported',
-          description:
-            'Your browser does not support camera access. Please use a different browser.',
-        });
-        setHasCameraPermission(false);
-        return;
-      }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description:
-            'Please enable camera permissions in your browser settings to use this app.',
-        });
-      }
-    };
-
-    getCameraPermission();
+    initializePoseLandmarker();
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
       }
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-       if (identificationTimeoutId.current) {
-        clearTimeout(identificationTimeoutId.current);
-      }
+      poseLandmarkerRef.current?.close();
     };
-  }, [toast]);
+  }, [predict]);
 
-  const getAIFeedback = useCallback(
-    async (exercise: string, issues: string[]) => {
-      if (isGeneratingFeedback) return;
-      setIsGeneratingFeedback(true);
-      
+  const onResults = (results: PoseLandmarkerResult) => {
+    const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
+    const videoHeight = webcamRef.current?.video?.videoHeight || 720;
+    const canvasElement = canvasRef.current;
+    const canvasCtx = canvasElement?.getContext('2d');
+
+    if (!canvasCtx || !canvasElement) return;
+
+    canvasElement.width = videoWidth;
+    canvasElement.height = videoHeight;
+
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, videoWidth, videoHeight);
+
+    if (results.landmarks && results.landmarks.length > 0) {
+      const drawingUtils = new DrawingUtils(canvasCtx);
+      const landmarks = results.landmarks[0];
+
+      // Draw skeleton
+      drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, {
+        color: '#00FF00',
+        lineWidth: 4,
+      });
+      drawingUtils.drawLandmarks(landmarks, {
+        color: '#FF0000',
+        lineWidth: 2,
+        radius: 4,
+      });
+
+      // --- Rule-based Logic for Bicep Curl ---
       try {
-        if (issues.length > 0) {
-            const { feedback } = await generateFeedbackForPose({
-              exerciseName: exercise,
-              issues,
-            });
-            setAiFeedback(feedback);
-        } else if (exercise !== 'STANDING') {
-             setAiFeedback('Excellent form! Keep it up.');
-        } else {
-            setAiFeedback('Ready to begin exercise.');
-        }
-      } catch (error) {
-        console.error('Error generating feedback:', error);
-        setAiFeedback('Could not generate feedback.');
-      } finally {
-        setTimeout(() => setIsGeneratingFeedback(false), 2000); // Cooldown to prevent spamming
-      }
-    },
-    [isGeneratingFeedback]
-  );
-  
-  const getAIExercise = useCallback(async (landmarks: NormalizedLandmark[]) => {
-    if (isIdentifying) return;
-    setIsIdentifying(true);
-    try {
-        const { exerciseName } = await identifyExerciseFromPose({ landmarks });
-        setIdentifiedExercise(exerciseName);
-    } catch (error) {
-        console.error("Error identifying exercise", error);
-    } finally {
-        if (identificationTimeoutId.current) clearTimeout(identificationTimeoutId.current);
-        identificationTimeoutId.current = setTimeout(() => {
-            setIsIdentifying(false);
-        }, 5000); // 5 second cooldown for identification
-    }
-  }, [isIdentifying]);
+        const getLandmarkCoords = (idx: number) => [
+          landmarks[idx].x * videoWidth,
+          landmarks[idx].y * videoHeight,
+        ];
+        const rightShoulder = getLandmarkCoords(12);
+        const rightElbow = getLandmarkCoords(14);
+        const rightWrist = getLandmarkCoords(16);
 
+        const elbowAngle = calculateAngle(
+          rightShoulder,
+          rightElbow,
+          rightWrist
+        );
 
-  // Prediction loop
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!hasCameraPermission || !poseLandmarker || !video || !canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const drawingUtils = new DrawingUtils(ctx);
-
-    const predict = async () => {
-      if (video.readyState < 2) {
-        animationFrameId.current = requestAnimationFrame(predict);
-        return;
-      }
-
-      if (video.currentTime !== lastVideoTime) {
-        const startTimeMs = performance.now();
-        const results = poseLandmarker.detectForVideo(video, startTimeMs);
-        lastVideoTime = video.currentTime;
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (results.landmarks && results.landmarks.length > 0) {
-          const landmarks = results.landmarks[0];
-
-          // AI Identification
-          if (!isIdentifying) {
-              getAIExercise(landmarks);
+        if (elbowAngle > MAX_ANGLE) {
+          if (stage !== 'DOWN') {
+            setStage('DOWN');
           }
-
-          // Algorithmic Analysis
-          analyzePose(landmarks);
-
-          // Draw skeleton
-          drawingUtils.drawLandmarks(
-            landmarks.filter((lm) => (lm.visibility ?? 0) > 0.5),
-            { radius: 6, color: 'black', fillColor: 'black' }
-          );
-          drawingUtils.drawConnectors(landmarks, POSE_CONNECTIONS, {
-            color: 'black',
-            lineWidth: 8,
-          });
-        } else {
-          setIdentifiedExercise(null);
-          setFormScore(0);
-          setAiFeedback('No person detected in frame.');
-        }
-      }
-      animationFrameId.current = requestAnimationFrame(predict);
-    };
-
-    const handleLoadedData = () => {
-      video.play();
-      if (!animationFrameId.current) {
-        predict();
-      }
-    };
-
-    video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('play', predict);
-
-    return () => {
-      video.removeEventListener('loadeddata', handleLoadedData);
-      video.removeEventListener('play', predict);
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null;
-      }
-       if (identificationTimeoutId.current) {
-        clearTimeout(identificationTimeoutId.current);
-      }
-    };
-  }, [hasCameraPermission, poseLandmarker, getAIFeedback, getAIExercise, isIdentifying]);
-
-  const analyzePose = (landmarks: NormalizedLandmark[]) => {
-    if (!identifiedExercise) {
-        setFormScore(0);
-        setAiFeedback("Ready to begin exercise.");
-        return;
-    };
-
-    const keypointsMap: { [key: string]: any } = {};
-    landmarks.forEach((lm, i) => {
-      const name = POSE_LANDMARKS[i];
-      if (name) keypointsMap[name] = lm;
-    });
-
-    let currentStage = 'up';
-    let totalScore = 100;
-    const issues: string[] = [];
-
-    const exerciseData =
-      WORKOUTS_DATA[identifiedExercise as keyof typeof WORKOUTS_DATA];
-    if (!exerciseData) {
-        setFormScore(0);
-        return;
-    };
-    
-    // Determine current stage for exercises that have them (like Squat)
-    if (identifiedExercise === 'SQUAT') {
-        const kneeAngle = calculateAngle(keypointsMap['left_hip'], keypointsMap['left_knee'], keypointsMap['left_ankle']);
-        if (kneeAngle < 120) {
-            currentStage = 'down';
-        }
-    }
-
-
-    // Form Scoring & Feedback Logic
-    const stageData =
-      exerciseData.stages[currentStage as keyof typeof exerciseData.stages];
-    if (stageData) {
-      for (const joint in stageData.rules) {
-        const rule = stageData.rules[joint as keyof typeof stageData.rules];
-        const p1 = keypointsMap[rule.p1];
-        const p2 = keypointsMap[rule.p2];
-        const p3 = keypointsMap[rule.p3];
-
-        if (p1?.visibility > 0.5 && p2?.visibility > 0.5 && p3?.visibility > 0.5) {
-          const angle = calculateAngle(p1, p2, p3);
-          if (angle < rule.angle.min || angle > rule.angle.max) {
-            totalScore -= 25; // Deduct points for each issue
-            issues.push(rule.feedback);
+        } else if (elbowAngle < MIN_ANGLE) {
+          if (stage === 'DOWN') {
+            setRepCount((prev) => prev + 1);
+            setStage('UP');
+            setFeedback('Great rep! Now slowly lower.');
+          } else {
+            setFeedback('Hold the contraction!');
           }
+        } else {
+          setFeedback(`Angle: ${elbowAngle.toFixed(0)}°`);
         }
+
+        if (stage === 'DOWN' && elbowAngle < MAX_ANGLE - 10 && elbowAngle > MIN_ANGLE) {
+            setFeedback('Extend your arm fully at the bottom.');
+        }
+
+      } catch (e) {
+        setFeedback('Please make sure your full arm is in view.');
       }
+    } else {
+      setFeedback('No person detected.');
     }
-
-    setFormScore(Math.max(0, totalScore));
-
-    // Always call getAIFeedback. The function itself will handle cooldowns.
-    getAIFeedback(identifiedExercise, issues);
+    canvasCtx.restore();
   };
 
   return (
     <div>
       <div className="flex items-center gap-4 mb-4">
         <h1 className="font-headline text-3xl font-bold">Live Workout</h1>
-        <Card className="p-2 px-4">
-          <div className="flex items-center gap-2">
-            {isIdentifying ? (
-              <Loader className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (
-              <VideoIcon className="h-5 w-5 text-primary" />
-            )}
-            <div>
-              <p className="text-xs font-bold text-muted-foreground">
-                CURRENT POSTURE/EXERCISE
-              </p>
-              <p className="font-bold text-lg leading-tight">
-                {identifiedExercise?.replace('_', ' ') || 'None Detected'}
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
       <p className="text-muted-foreground mb-8">
-        Real-time form correction powered by our hybrid AI and algorithmic engine.
+        Real-time bicep curl detection and form analysis.
       </p>
       <Card>
         <CardContent className="p-4">
           <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              autoPlay
-              muted
-              playsInline
+            <Webcam
+              ref={webcamRef}
+              mirrored={true}
+              className="absolute w-full h-full object-cover"
+              videoConstraints={{ width: 1280, height: 720 }}
+              style={{ opacity: 1 }} 
             />
             <canvas
               ref={canvasRef}
-              className="absolute inset-0 w-full h-full"
+              className="absolute w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
             />
 
-            {!hasCameraPermission && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 p-4 text-center text-primary-foreground">
-                <h2 className="font-headline text-4xl font-bold text-white">
-                  Camera Access Required
-                </h2>
-                <p className="mt-2 max-w-lg text-lg text-slate-300">
-                  Please allow camera access in your browser to start your live
-                  workout.
-                </p>
-              </div>
-            )}
-
             <div className="absolute bottom-4 left-4 right-4 flex gap-4">
-              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/3">
-                <p className="font-bold text-primary">Form Score</p>
-                <p className="text-3xl font-bold text-white">
-                  {Math.round(formScore)}
+              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
+                <p className="font-bold text-primary text-sm uppercase tracking-wider">
+                  Reps
+                </p>
+                <p className="text-5xl font-bold text-white tabular-nums">
+                  {repCount}
                 </p>
               </div>
-              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left">
-                <p className="font-bold text-primary">AI Feedback</p>
-                <p className="text-lg text-white">{aiFeedback}</p>
+              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 w-1/4 text-center">
+                <p className="font-bold text-primary text-sm uppercase tracking-wider">
+                  Stage
+                </p>
+                <p className="text-3xl font-bold text-white capitalize">
+                    {stage}
+                </p>
+              </div>
+              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4">
+                 <Dumbbell className="w-8 h-8 text-primary" />
+                 <div>
+                    <p className="font-bold text-primary">Feedback</p>
+                    <p className="text-lg text-white">{feedback}</p>
+                 </div>
               </div>
             </div>
-          </div>
-          <div className="mt-4">
-            {!hasCameraPermission && (
-              <Alert variant="destructive">
-                <AlertTitle>Camera Access Required</AlertTitle>
-                <AlertDescription>
-                  Please allow camera access to use this feature. You may need
-                  to refresh the page after granting permission.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         </CardContent>
       </Card>
