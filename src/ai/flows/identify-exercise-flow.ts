@@ -42,7 +42,7 @@ const identificationPrompt = ai.definePrompt({
   input: {schema: IdentifyExerciseFromPoseInputSchema},
   output: {
     schema: z.object({
-      exerciseName: z.enum(['', ...allExercises]).nullable(),
+      exerciseName: z.enum(allExercises as [string, ...string[]]).nullable(),
     }),
   },
   prompt: `You are a fitness expert. Based on the following pose data, identify which of these exercises the user is performing.
