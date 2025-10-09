@@ -158,6 +158,11 @@ export function WorkoutView() {
     setDrawingUtils(utils);
 
     const predict = async () => {
+      if (video.readyState < 2) {
+        animationFrameId.current = requestAnimationFrame(predict);
+        return;
+      }
+      
       if (video.currentTime !== lastVideoTime) {
         const startTimeMs = performance.now();
         const results = poseLandmarker.detectForVideo(
@@ -173,14 +178,18 @@ export function WorkoutView() {
         if (results.landmarks && results.landmarks.length > 0) {
           const landmarks = results.landmarks[0];
           analyzePose(landmarks);
-          utils.drawLandmarks(landmarks, {
-            radius: 8,
-            color: 'white',
-            fillColor: 'white',
+
+          // Filter landmarks based on visibility before drawing
+          const visibleLandmarks = landmarks.filter(lm => (lm.visibility ?? 0) > 0.5);
+
+          utils.drawLandmarks(visibleLandmarks, {
+            radius: 10,
+            color: 'black',
+            fillColor: 'black',
           });
           utils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-            color: 'white',
-            lineWidth: 8,
+            color: 'black',
+            lineWidth: 12,
           });
 
           if (!exerciseIdentificationTimeoutId.current && !isIdentifying) {
@@ -198,15 +207,19 @@ export function WorkoutView() {
     };
 
     const handleLoadedData = () => {
+      video.play();
       if (!animationFrameId.current) {
         predict();
       }
     };
 
     video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('play', predict);
+
 
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('play', predict);
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
@@ -220,11 +233,7 @@ export function WorkoutView() {
   const analyzePose = (landmarks: any[]) => {
     // This is a simplified analysis for a squat
     const keypointsMap: { [key: string]: any } = {};
-    const landmarkNames = PoseLandmarker.POSE_CONNECTIONS.flatMap((c) => [
-      c[0],
-      c[1],
-    ]).map((i) => POSE_LANDMARKS[i]);
-
+    
     landmarks.forEach((lm, i) => {
       const name = POSE_LANDMARKS[i];
       if (name) keypointsMap[name] = lm;
