@@ -137,7 +137,9 @@ export function WorkoutView() {
     } catch (error) {
         console.error('Error generating feedback:', error);
     } finally {
+      setTimeout(() => {
         setIsGeneratingFeedback(false);
+      }, 5000); // 5 second cooldown
     }
   }, [isGeneratingFeedback]);
 
@@ -226,26 +228,20 @@ export function WorkoutView() {
     let totalScore = 100;
     const issues: string[] = [];
 
-    // Check for Squat first
-    const squatData = WORKOUTS_DATA['SQUAT'];
-    if (squatData) {
-        const downStage = squatData.stages.down;
-        
-        let isDownStage = true;
-        // Check if user is in the "down" stage of a squat
-        for (const joint in downStage.rules) {
-            const rule = downStage.rules[joint as keyof typeof downStage.rules];
-            const angle = calculateAngle(keypointsMap[rule.p1], keypointsMap[rule.p2], keypointsMap[rule.p3]);
-            if (angle < rule.angle.min) {
-                isDownStage = false;
-                break;
-            }
-        }
+    // Check for Squat
+    const kneeAngle = calculateAngle(keypointsMap['left_hip'], keypointsMap['left_knee'], keypointsMap['left_ankle']);
+    const hipAngle = calculateAngle(keypointsMap['left_shoulder'], keypointsMap['left_hip'], keypointsMap['left_knee']);
 
-        if (isDownStage) {
-            detectedExercise = 'SQUAT';
+    if (kneeAngle < 160 || hipAngle < 160) {
+        detectedExercise = 'SQUAT';
+        if (kneeAngle < 110) {
             currentStage = 'down';
+        } else {
+            currentStage = 'up';
         }
+    } else {
+        detectedExercise = 'STANDING';
+        currentStage = 'up';
     }
     
     // Set identified exercise
@@ -255,33 +251,34 @@ export function WorkoutView() {
     const exerciseData = WORKOUTS_DATA[detectedExercise as keyof typeof WORKOUTS_DATA];
     if (exerciseData) {
       const stageData = exerciseData.stages[currentStage as keyof typeof exerciseData.stages];
-      for (const joint in stageData.rules) {
-        const rule = stageData.rules[joint as keyof typeof stageData.rules];
-        const p1 = keypointsMap[rule.p1];
-        const p2 = keypointsMap[rule.p2];
-        const p3 = keypointsMap[rule.p3];
-        
-        if (p1?.visibility > 0.5 && p2?.visibility > 0.5 && p3?.visibility > 0.5) {
-            const angle = calculateAngle(p1, p2, p3);
-            if (angle < rule.angle.min || angle > rule.angle.max) {
-                totalScore -= 25; // Deduct points for each issue
-                issues.push(rule.feedback);
+      if (stageData) {
+        for (const joint in stageData.rules) {
+            const rule = stageData.rules[joint as keyof typeof stageData.rules];
+            const p1 = keypointsMap[rule.p1];
+            const p2 = keypointsMap[rule.p2];
+            const p3 = keypointsMap[rule.p3];
+            
+            if (p1?.visibility > 0.5 && p2?.visibility > 0.5 && p3?.visibility > 0.5) {
+                const angle = calculateAngle(p1, p2, p3);
+                if (angle < rule.angle.min || angle > rule.angle.max) {
+                    totalScore -= 25; // Deduct points for each issue
+                    issues.push(rule.feedback);
+                }
             }
-        }
+          }
       }
     }
 
     setFormScore(Math.max(0, totalScore));
 
     if (issues.length > 0) {
-      if (!feedbackTimeoutId.current && !isGeneratingFeedback) {
-        feedbackTimeoutId.current = setTimeout(() => {
-          getAIFeedback(detectedExercise, issues);
-          feedbackTimeoutId.current = null;
-        }, 3000);
-      }
+        getAIFeedback(detectedExercise, issues);
     } else {
-        setAiFeedback("Great form! Keep it up.");
+        if (detectedExercise !== 'STANDING') {
+            setAiFeedback("Great form! Keep it up.");
+        } else {
+            setAiFeedback("Ready to begin exercise.");
+        }
     }
   };
 
