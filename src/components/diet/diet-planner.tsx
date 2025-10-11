@@ -1,7 +1,8 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Bot, Loader2, User } from 'lucide-react';
+import { Bot, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useState } from 'react';
@@ -12,8 +13,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { Label } from '../ui/label';
 
 const dietFormSchema = z.object({
   height: z.string().optional(),
@@ -30,6 +40,132 @@ type DietPlan = {
     dinner: string;
   };
 };
+
+type Meal = {
+  id: string;
+  name: string;
+  type: 'Breakfast' | 'Lunch' | 'Dinner';
+};
+
+type DailyDiet = {
+  day: string;
+  meals: Meal[];
+};
+
+const initialDiet: DailyDiet[] = [
+  { day: 'Monday', meals: [] },
+  { day: 'Tuesday', meals: [] },
+  { day: 'Wednesday', meals: [] },
+  { day: 'Thursday', meals: [] },
+  { day: 'Friday', meals: [] },
+  { day: 'Saturday', meals: [] },
+  { day: 'Sunday', meals: [] },
+];
+
+function CustomDietPlanner() {
+  const [schedule, setSchedule] = useState<DailyDiet[]>(initialDiet);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentDay, setCurrentDay] = useState('');
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealType, setNewMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Breakfast');
+
+  const handleAddMeal = () => {
+    if (!newMealName.trim() || !currentDay) return;
+    
+    setSchedule(schedule.map(daySchedule => {
+        if (daySchedule.day === currentDay) {
+            return {
+                ...daySchedule,
+                meals: [...daySchedule.meals, { id: Date.now().toString(), name: newMealName, type: newMealType }]
+            }
+        }
+        return daySchedule;
+    }));
+    setNewMealName('');
+    setIsDialogOpen(false);
+  }
+
+  const handleRemoveMeal = (day: string, mealId: string) => {
+    setSchedule(schedule.map(daySchedule => {
+        if (daySchedule.day === day) {
+            return {
+                ...daySchedule,
+                meals: daySchedule.meals.filter(m => m.id !== mealId)
+            }
+        }
+        return daySchedule;
+    }))
+  }
+  
+  const openDialog = (day: string) => {
+    setCurrentDay(day);
+    setIsDialogOpen(true);
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {schedule.map(({ day, meals }) => (
+          <Card key={day} className="flex flex-col">
+            <CardHeader className="flex-row items-center justify-between py-4 px-6">
+              <CardTitle className="font-headline text-lg">{day}</CardTitle>
+              <Button size="icon" variant="ghost" onClick={() => openDialog(day)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-2 px-6 pb-6">
+              {meals.length > 0 ? meals.map(meal => (
+                <div key={meal.id} className="group flex items-center justify-between rounded-md bg-muted p-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">{meal.type}</span>
+                    <span className="text-sm">{meal.name}</span>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveMeal(day, meal.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              )) : <p className="text-sm text-muted-foreground text-center pt-4">No meals planned.</p>}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+              <DialogTitle>Add Meal to {currentDay}</DialogTitle>
+              <DialogDescription>
+                  Plan a new meal for your diet.
+              </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="meal-name" className="text-right">Name</Label>
+                      <Input id="meal-name" value={newMealName} onChange={(e) => setNewMealName(e.target.value)} className="col-span-3" placeholder="e.g. Chicken Salad" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="meal-type" className="text-right">Type</Label>
+                      <Select onValueChange={(value: any) => setNewMealType(value)} defaultValue={newMealType}>
+                          <SelectTrigger className="col-span-3">
+                              <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="Breakfast">Breakfast</SelectItem>
+                              <SelectItem value="Lunch">Lunch</SelectItem>
+                              <SelectItem value="Dinner">Dinner</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button onClick={handleAddMeal}>Add Meal</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 
 export function DietPlanner() {
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +203,7 @@ export function DietPlanner() {
         <TabsTrigger value="ai-generator">AI Diet Generator</TabsTrigger>
         <TabsTrigger value="custom-plan">My Custom Plan</TabsTrigger>
       </TabsList>
-      <TabsContent value="ai-generator">
+      <TabsContent value="ai-generator" className="mt-4">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <Card>
             <CardHeader>
@@ -197,17 +333,11 @@ export function DietPlanner() {
           </Card>
         </div>
       </TabsContent>
-      <TabsContent value="custom-plan">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Your Custom Diet Plan</CardTitle>
-             <CardDescription>This feature is coming soon! Plan your meals for the week.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center text-muted-foreground">
-            <p>Custom diet planning will be available in a future update.</p>
-          </CardContent>
-        </Card>
+      <TabsContent value="custom-plan" className="mt-4">
+        <CustomDietPlanner />
       </TabsContent>
     </Tabs>
   );
 }
+
+    
