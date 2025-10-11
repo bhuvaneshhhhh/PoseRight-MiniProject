@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -104,14 +105,18 @@ export function WorkoutView() {
       const drawingUtils = new DrawingUtils(canvasCtx);
       const landmarks = results.landmarks[0];
 
+      // Added pulsing effect for landmarks
+      const pulseFactor = 0.5 * Math.sin(Date.now() * 0.01) + 0.5; // Oscillates between 0 and 1
+      const landmarkRadius = 6 + 2 * pulseFactor; // Base radius 6, pulses up to 8
+
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
         color: '#000000',
-        lineWidth: 8,
+        lineWidth: 12,
       });
       drawingUtils.drawLandmarks(landmarks, {
         color: '#808080',
         lineWidth: 4,
-        radius: 6,
+        radius: landmarkRadius,
       });
 
       try {
@@ -198,13 +203,13 @@ export function WorkoutView() {
       );
       const landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task`,
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
         numPoses: 1,
         minPoseDetectionConfidence: 0.3,
-        minTrackingConfidence: 0.3,
+        minTrackingConfidence: 0.6,
         outputSegmentationMasks: false,
       });
       poseLandmarkerRef.current = landmarker;
@@ -281,3 +286,5 @@ export function WorkoutView() {
     </div>
   );
 }
+
+    
