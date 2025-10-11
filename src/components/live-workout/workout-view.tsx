@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { generateAudioFeedback } from '@/ai/flows/generate-audio-feedback-flow';
 import { generateFeedbackForPose } from '@/ai/flows/generate-feedback-flow';
+import { Card, CardContent } from '../ui/card';
 
 /**
  * Calculates the angle (in degrees) between three 2D points (x, y).
@@ -229,40 +230,52 @@ export function WorkoutView() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      <header className="p-4 border-b bg-background z-10">
+      <header className="p-4 border-b bg-card z-10 shrink-0">
         <h1 className="font-headline text-2xl md:text-3xl font-bold">Live Workout</h1>
         <p className="text-muted-foreground text-sm md:text-base">
           Demo tracking
         </p>
       </header>
-      <div className="flex-1 relative bg-black flex items-center justify-center">
-        <div className="relative w-full h-full">
-            <Webcam
-              ref={webcamRef}
-              mirrored={true}
-              className="absolute inset-0 w-full h-full object-contain"
-              videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-        </div>
-         <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="relative bg-black flex flex-col items-center justify-center lg:w-1/3 lg:h-full">
+            <div className="relative w-full aspect-video lg:aspect-auto lg:h-full">
+                <Webcam
+                  ref={webcamRef}
+                  mirrored={true}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+            </div>
+            <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
 
-        <div className="absolute bottom-4 left-4 right-4 flex flex-col md:flex-row gap-4">
-          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-0">
-              {isAudioLoading ? (
-                <Volume2 className="w-8 h-8 text-primary animate-pulse flex-shrink-0" />
-              ) : (
-                <Dumbbell className="w-8 h-8 text-primary flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="font-bold text-primary">Feedback</p>
-                <p className="text-base md:text-lg text-white truncate">{feedbackText}</p>
+            <div className="absolute bottom-4 left-4 right-4 flex flex-col md:flex-row gap-4">
+              <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-0">
+                  {isAudioLoading ? (
+                    <Volume2 className="w-8 h-8 text-primary animate-pulse flex-shrink-0" />
+                  ) : (
+                    <Dumbbell className="w-8 h-8 text-primary flex-shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-bold text-primary">Feedback</p>
+                    <p className="text-base md:text-lg text-white truncate">{feedbackText}</p>
+                  </div>
               </div>
-          </div>
+            </div>
+        </div>
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <Card>
+                <CardContent className="p-6">
+                    <h2 className="font-headline text-xl font-bold mb-4">Workout Instructions</h2>
+                    <p className="text-muted-foreground">
+                        This area can be used to display exercise instructions, upcoming moves, or other relevant information for the user during their workout. For now, it's a placeholder.
+                    </p>
+                </CardContent>
+            </Card>
         </div>
       </div>
     </div>
