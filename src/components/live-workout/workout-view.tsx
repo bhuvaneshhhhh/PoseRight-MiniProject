@@ -240,12 +240,12 @@ export function WorkoutView() {
             <Webcam
               ref={webcamRef}
               mirrored={true}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
             />
             <canvas
               ref={canvasRef}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               style={{ transform: 'scaleX(-1)' }}
             />
         </div>
