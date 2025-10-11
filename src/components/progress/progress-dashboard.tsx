@@ -46,8 +46,8 @@ const fitnessTips = [
 
 export function ProgressDashboard() {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <Card className="lg:col-span-3">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <Card className="md:col-span-2 lg:col-span-3">
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-2">
             <BarChart className="h-6 w-6" />
@@ -68,7 +68,7 @@ export function ProgressDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
+      <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-2">
             <TrendingUp className="h-6 w-6" />
@@ -89,7 +89,7 @@ export function ProgressDashboard() {
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="md:col-span-2 lg:col-span-1">
         <CardHeader>
           <CardTitle className="font-headline">Quick Tips</CardTitle>
            <CardDescription>Some advice for your fitness journey.</CardDescription>

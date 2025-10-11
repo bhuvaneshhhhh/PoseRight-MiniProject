@@ -83,13 +83,13 @@ export function SchedulePlanner() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {schedule.map(({ day, workouts }) => (
           <Card key={day} className="flex flex-col">
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle className="font-headline text-xl">{day}</CardTitle>
+            <CardHeader className="flex-row items-center justify-between py-4 px-6">
+              <CardTitle className="font-headline text-lg">{day}</CardTitle>
               <Button size="icon" variant="ghost" onClick={() => openDialog(day)}>
                 <Plus className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent className="flex-1 space-y-2">
+            <CardContent className="flex-1 space-y-2 px-6 pb-6">
               {workouts.length > 0 ? workouts.map(workout => (
                 <div key={workout.id} className="group flex items-center justify-between rounded-md bg-muted p-2">
                   <div className="flex items-center gap-2">

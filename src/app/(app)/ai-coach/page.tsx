@@ -4,8 +4,8 @@ export default function AiCoachPage() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b bg-card p-4 md:p-8">
-        <h1 className="font-headline text-3xl font-bold">AI Fitness Coach</h1>
-        <p className="text-muted-foreground">
+        <h1 className="font-headline text-2xl md:text-3xl font-bold">AI Fitness Coach</h1>
+        <p className="text-muted-foreground text-sm md:text-base">
           Ask me anything about workouts, nutrition, or your fitness plan.
         </p>
       </header>

@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm sm:max-w-md">
         <div className="mb-8 flex flex-col items-center gap-4 text-center">
           <Logo className="h-12 w-auto text-primary" />
-          <h1 className="font-headline text-3xl font-bold text-foreground">
+          <h1 className="font-headline text-2xl sm:text-3xl font-bold text-foreground">
             Welcome back to PoseRight-AI
           </h1>
           <p className="text-muted-foreground">

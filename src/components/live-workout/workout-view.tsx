@@ -230,9 +230,9 @@ export function WorkoutView() {
   return (
     <div className="h-full w-full flex flex-col">
       <header className="p-4 border-b bg-background z-10">
-        <h1 className="font-headline text-3xl font-bold">Live Workout</h1>
-        <p className="text-muted-foreground">
-          Real-time bicep curl detection and form analysis.
+        <h1 className="font-headline text-2xl md:text-3xl font-bold">Live Workout</h1>
+        <p className="text-muted-foreground text-sm md:text-base">
+          Demo tracking
         </p>
       </header>
       <div className="flex-1 relative bg-black flex items-center justify-center">
@@ -251,16 +251,16 @@ export function WorkoutView() {
         </div>
          <audio ref={audioRef} className="hidden" onEnded={handleAudioEnd} />
 
-        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-4">
-          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-[200px]">
+        <div className="absolute bottom-4 left-4 right-4 flex flex-col md:flex-row gap-4">
+          <div className="rounded-lg bg-black/50 backdrop-blur-sm p-4 flex-1 text-left flex items-center gap-4 min-w-0">
               {isAudioLoading ? (
-                <Volume2 className="w-8 h-8 text-primary animate-pulse" />
+                <Volume2 className="w-8 h-8 text-primary animate-pulse flex-shrink-0" />
               ) : (
-                <Dumbbell className="w-8 h-8 text-primary" />
+                <Dumbbell className="w-8 h-8 text-primary flex-shrink-0" />
               )}
-              <div>
+              <div className="min-w-0">
                 <p className="font-bold text-primary">Feedback</p>
-                <p className="text-lg text-white">{feedbackText}</p>
+                <p className="text-base md:text-lg text-white truncate">{feedbackText}</p>
               </div>
           </div>
         </div>

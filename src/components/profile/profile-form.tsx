@@ -118,6 +118,8 @@ export function ProfileForm() {
               title: 'Upload Failed',
               description: 'Could not store your profile picture.',
             });
+        } finally {
+            setIsUploading(false);
         }
       };
       reader.onerror = (error) => {
@@ -136,9 +138,6 @@ export function ProfileForm() {
         title: 'Upload Failed',
         description: 'Could not upload your profile picture.',
       });
-      setIsUploading(false);
-    } finally {
-      // This will run after onload completes
       setIsUploading(false);
     }
   };
@@ -174,7 +173,7 @@ export function ProfileForm() {
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col md:flex-row items-center gap-6">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
                     src={form.watch('profilePicture') || undefined}
@@ -184,7 +183,7 @@ export function ProfileForm() {
                     <User className="h-10 w-10" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-1">
+                <div className="space-y-1 text-center md:text-left">
                   <h2 className="text-xl font-bold">Profile Picture</h2>
                   <p className="text-sm text-muted-foreground">
                     Click below to upload a new image.
