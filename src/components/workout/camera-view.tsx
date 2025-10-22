@@ -44,15 +44,17 @@ export function CameraView({ onPoseData }: CameraViewProps) {
 
       const drawingUtils = new DrawingUtils(canvasCtx);
       
+      const pulseFactor = 0.5 * Math.sin(Date.now() * 0.01) + 0.5; // Oscillates between 0 and 1
+      const landmarkRadius = 6 + 2 * pulseFactor; // Base radius 6, pulses up to 8
+
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-        color: 'hsl(var(--primary))',
-        lineWidth: 4,
+        color: '#000000',
+        lineWidth: 12,
       });
       drawingUtils.drawLandmarks(landmarks, {
-        color: 'hsl(var(--primary-foreground))',
-        fillColor: 'hsl(var(--primary))',
-        lineWidth: 2,
-        radius: 5,
+        color: '#808080',
+        lineWidth: 4,
+        radius: landmarkRadius,
       });
     }
     canvasCtx.restore();
