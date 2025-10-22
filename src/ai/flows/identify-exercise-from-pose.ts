@@ -1,4 +1,4 @@
-'use server'
+'use server';
 /**
  * @fileOverview This flow identifies a user's exercise from pose data.
  *
@@ -30,10 +30,10 @@ const IdentifyExerciseFromPoseOutputSchema = z.object({
   exerciseName: z.enum(exerciseNames).nullable(),
 });
 
-type IdentifyExerciseFromPoseInput = z.infer<
+export type IdentifyExerciseFromPoseInput = z.infer<
   typeof IdentifyExerciseFromPoseInputSchema
 >;
-type IdentifyExerciseFromPoseOutput = z.infer<
+export type IdentifyExerciseFromPoseOutput = z.infer<
   typeof IdentifyExerciseFromPoseOutputSchema
 >;
 
@@ -58,7 +58,12 @@ const identifyExerciseFlow = ai.defineFlow(
     inputSchema: IdentifyExerciseFromPoseInputSchema,
     outputSchema: IdentifyExerciseFromPoseOutputSchema,
   },
-  async input => {
+  async (input) => {
+    // Basic validation: If landmarks are empty or very few, it's unlikely a pose.
+    if (input.landmarks.length < 15) {
+      return { exerciseName: null };
+    }
+    
     const { output } = await identificationPrompt(input);
     if (!output) {
       return { exerciseName: null };

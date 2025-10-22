@@ -31,7 +31,7 @@ const menuItems = [
   },
   {
     href: '/live-workout',
-    label: 'Live Workout',
+    label: 'Workout',
     icon: Video,
   },
   {
@@ -65,6 +65,9 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile } = useSidebar();
 
+  // A simple way to handle the active state for nested routes
+  const isWorkoutActive = pathname.startsWith('/live-workout') || pathname.startsWith('/workout');
+
   return (
     <Sidebar variant="inset" collapsible={isMobile ? 'offcanvas' : 'icon'}>
       <SidebarHeader className="flex items-center justify-between p-4">
@@ -75,20 +78,25 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === item.href}
-                tooltip={{ children: item.label, className: 'bg-primary text-primary-foreground' }}
-              >
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {menuItems.map((item) => {
+            const isActive = item.href.startsWith('/live-workout') ? isWorkoutActive : pathname === item.href;
+            const href = item.href.startsWith('/live-workout') ? '/live-workout' : item.href;
+            
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  tooltip={{ children: item.label, className: 'bg-primary text-primary-foreground' }}
+                >
+                  <Link href={href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>
