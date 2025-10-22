@@ -44,9 +44,6 @@ export function CameraView({ onPoseData }: CameraViewProps) {
 
       const drawingUtils = new DrawingUtils(canvasCtx);
       
-      const pulseFactor = 0.5 * Math.sin(Date.now() * 0.01) + 0.5;
-      const landmarkRadius = 5 + 2 * pulseFactor;
-
       drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
         color: 'hsl(var(--primary))',
         lineWidth: 4,
@@ -55,7 +52,7 @@ export function CameraView({ onPoseData }: CameraViewProps) {
         color: 'hsl(var(--primary-foreground))',
         fillColor: 'hsl(var(--primary))',
         lineWidth: 2,
-        radius: landmarkRadius,
+        radius: 5,
       });
     }
     canvasCtx.restore();
