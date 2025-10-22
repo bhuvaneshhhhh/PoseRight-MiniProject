@@ -57,6 +57,9 @@ const generateAudioFeedbackFlow = ai.defineFlow(
     outputSchema: GenerateAudioFeedbackOutputSchema,
   },
   async (input) => {
+    if (!input.text) {
+        return { audio: '' };
+    }
     const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {

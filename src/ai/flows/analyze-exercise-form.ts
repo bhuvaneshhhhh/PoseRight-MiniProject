@@ -36,8 +36,7 @@ const FormAnalysisSchema = z.object({
   feedback: z
     .string()
     .describe('A single, concise, and actionable piece of advice for immediate correction.'),
-  vocalizationNeeded: z.boolean().describe('Whether the feedback should be spoken aloud.'),
-  instructions: z.string().describe('The feedback text to be vocalized if needed.')
+  vocalizationNeeded: z.boolean().describe('Whether the feedback should be spoken aloud automatically.'),
 });
 
 export type FormAnalysis = z.infer<typeof FormAnalysisSchema>;
@@ -64,7 +63,7 @@ Based on this, generate a structured analysis.
 - Calculate a 'formScore' from 0-100. 100 is perfect. Deduct points for each deviation from the ideal form.
 - Provide a 'formAnalysis' as a list of bullet points. Start with positive reinforcement, then list areas for improvement.
 - Generate a single, concise, encouraging, and actionable 'feedback' message for immediate correction. This is the most critical cue.
-- If the form score is below 80 and there's a clear mistake, set 'vocalizationNeeded' to true and copy the feedback message to 'instructions'. Otherwise, set it to false and instructions to an empty string.
+- If the form score is below 80, set 'vocalizationNeeded' to true. Otherwise, set it to false.
 `,
 });
 
