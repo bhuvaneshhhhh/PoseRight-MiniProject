@@ -131,6 +131,65 @@ export const WORKOUTS_DATA: { [key: string]: WorkoutData } = {
             }
         }
     },
+    BICEP_CURL: {
+        stages: {
+            up: {
+                rules: {
+                    elbow: {
+                        p1: 'left_shoulder', p2: 'left_elbow', p3: 'left_wrist',
+                        angle: { min: 20, max: 50 },
+                        feedback: "Bring your wrist closer to your shoulder to complete the curl."
+                    },
+                    shoulder: {
+                        p1: 'left_elbow', p2: 'left_shoulder', p3: 'left_hip',
+                        angle: { min: 15, max: 45 },
+                        feedback: "Keep your elbow pinned to your side; don't let it swing forward."
+                    }
+                }
+            },
+            down: {
+                rules: {
+                    elbow: {
+                        p1: 'left_shoulder', p2: 'left_elbow', p3: 'left_wrist',
+                        angle: { min: 160, max: 190 },
+                        feedback: "Fully extend your arm at the bottom of the movement."
+                    }
+                }
+            }
+        }
+    },
+    PUSH_UP: {
+        stages: {
+            down: {
+                rules: {
+                    elbow: {
+                        p1: 'left_shoulder', p2: 'left_elbow', p3: 'left_wrist',
+                        angle: { min: 70, max: 110 },
+                        feedback: "Lower your chest closer to the floor."
+                    },
+                    back: {
+                        p1: 'left_shoulder', p2: 'left_hip', p3: 'left_ankle',
+                        angle: { min: 170, max: 190 },
+                        feedback: "Keep your back straight; don't let your hips sag."
+                    }
+                }
+            },
+            up: {
+                rules: {
+                    elbow: {
+                        p1: 'left_shoulder', p2: 'left_elbow', p3: 'left_wrist',
+                        angle: { min: 160, max: 190 },
+                        feedback: "Fully extend your arms at the top."
+                    },
+                     back: {
+                        p1: 'left_shoulder', p2: 'left_hip', p3: 'left_ankle',
+                        angle: { min: 170, max: 190 },
+                        feedback: "Maintain a straight line from your head to your heels."
+                    }
+                }
+            }
+        }
+    },
     STANDING: {
         stages: {
             up: {

@@ -132,7 +132,7 @@ export function FeedbackDisplay({
             )}
           </div>
 
-          <div>
+          <div className="relative">
             <div className="flex items-center justify-between mb-2">
                  <h3 className="font-semibold">Detailed Breakdown</h3>
                  {analysis?.formAnalysis && analysis.formAnalysis.length > 0 && (
