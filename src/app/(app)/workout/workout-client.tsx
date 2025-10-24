@@ -23,16 +23,23 @@ export function WorkoutClient() {
   const [identifiedExercise, setIdentifiedExercise] = useState<string | null>(null);
   const [formAnalysis, setFormAnalysis] = useState<FormAnalysis | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [latestLandmarks, setLatestLandmarks] = useState<Landmark[]>([]);
 
   const exerciseToAnalyze = selectedExercise || identifiedExercise;
   const lastAnalysisTime = useRef(Date.now());
   const analysisCooldown = 2000; // 2 seconds
 
-  const handlePoseData = useCallback(
+  const handlePoseDataForDrawing = useCallback((landmarks: Landmark[]) => {
+    // This function only updates the landmarks for drawing, running every frame.
+    setLatestLandmarks(landmarks);
+  }, []);
+
+  const handlePoseDataForAnalysis = useCallback(
     async (landmarks: Landmark[]) => {
       const now = Date.now();
-      if (isProcessing || now - lastAnalysisTime.current < analysisCooldown) return;
-
+      if (isProcessing || now - lastAnalysisTime.current < analysisCooldown) {
+        return;
+      }
       setIsProcessing(true);
       lastAnalysisTime.current = now;
       
@@ -89,7 +96,11 @@ export function WorkoutClient() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <div className="relative bg-black flex flex-col items-center justify-center lg:w-1/2 lg:h-full">
           <div className="relative w-full aspect-video lg:aspect-auto lg:h-full">
-            <CameraView onPoseData={handlePoseData} />
+            <CameraView 
+              onPoseData={handlePoseDataForDrawing}
+              onAnalyzeData={handlePoseDataForAnalysis}
+              landmarksToDraw={latestLandmarks}
+            />
           </div>
         </div>
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">

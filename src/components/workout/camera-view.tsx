@@ -13,9 +13,11 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 
 interface CameraViewProps {
   onPoseData: (landmarks: Landmark[]) => void;
+  onAnalyzeData: (landmarks: Landmark[]) => void;
+  landmarksToDraw: Landmark[];
 }
 
-export function CameraView({ onPoseData }: CameraViewProps) {
+export function CameraView({ onPoseData, onAnalyzeData, landmarksToDraw }: CameraViewProps) {
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastVideoTimeRef = useRef(-1);
@@ -24,7 +26,19 @@ export function CameraView({ onPoseData }: CameraViewProps) {
   const { toast } = useToast();
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
+  // This callback now handles both drawing and passing data for analysis
   const onResults = useCallback((results: PoseLandmarkerResult) => {
+    if (results.landmarks && results.landmarks.length > 0) {
+      const landmarks = results.landmarks[0];
+      onPoseData(landmarks); // Send data to parent for drawing every frame
+      onAnalyzeData(landmarks); // Send data to parent for analysis (which will be throttled)
+    } else {
+      onPoseData([]); // Clear landmarks if none are detected
+    }
+  }, [onPoseData, onAnalyzeData]);
+
+  // Effect for drawing the skeleton on the canvas
+  useEffect(() => {
     const videoWidth = webcamRef.current?.video?.videoWidth || 1280;
     const videoHeight = webcamRef.current?.video?.videoHeight || 720;
     const canvasElement = canvasRef.current;
@@ -38,27 +52,25 @@ export function CameraView({ onPoseData }: CameraViewProps) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, videoWidth, videoHeight);
 
-    if (results.landmarks && results.landmarks.length > 0) {
-      const landmarks = results.landmarks[0];
-      onPoseData(landmarks); // Send data to parent
-
+    if (landmarksToDraw && landmarksToDraw.length > 0) {
       const drawingUtils = new DrawingUtils(canvasCtx);
       
       const pulseFactor = 0.5 * Math.sin(Date.now() * 0.01) + 0.5; // Oscillates between 0 and 1
       const landmarkRadius = 6 + 2 * pulseFactor; // Base radius 6, pulses up to 8
 
-      drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+      drawingUtils.drawConnectors(landmarksToDraw, PoseLandmarker.POSE_CONNECTIONS, {
         color: '#000000',
         lineWidth: 12,
       });
-      drawingUtils.drawLandmarks(landmarks, {
+      drawingUtils.drawLandmarks(landmarksToDraw, {
         color: '#808080',
         lineWidth: 4,
         radius: landmarkRadius,
       });
     }
     canvasCtx.restore();
-  }, [onPoseData]);
+  }, [landmarksToDraw]);
+
 
   const predict = useCallback(() => {
     if (
