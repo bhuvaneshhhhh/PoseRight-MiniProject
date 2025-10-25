@@ -74,7 +74,8 @@ export function AppSidebar() {
         <Link href="/dashboard" className="flex items-center gap-2">
           <Logo className="h-7 w-auto text-primary" />
         </Link>
-        <SidebarTrigger className="h-7 w-7 md:hidden" />
+        {/* This trigger is for desktop view when collapsible is 'icon' */}
+        <SidebarTrigger className="hidden h-7 w-7 md:flex" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
