@@ -16,13 +16,13 @@ const MessageSchema = z.object({
   content: z.string(),
 });
 
-export const AskChatbotInputSchema = z.object({
+const AskChatbotInputSchema = z.object({
   question: z.string().describe('The user question about fitness.'),
   history: z.array(MessageSchema).optional().describe('The conversation history.'),
 });
 export type AskChatbotInput = z.infer<typeof AskChatbotInputSchema>;
 
-export const AskChatbotOutputSchema = z.object({
+const AskChatbotOutputSchema = z.object({
   answer: z.string().describe('The AI-generated answer to the user question.'),
 });
 export type AskChatbotOutput = z.infer<typeof AskChatbotOutputSchema>;
